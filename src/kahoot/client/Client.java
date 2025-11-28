@@ -32,7 +32,7 @@ public class Client {
             handler.start();
 
             System.out.println("🟢 Ligado ao servidor!");
-            enviarMensagem(new Mensagem(nomeJogador, "JOIN"));
+            enviarMensagem(new Mensagem(    nomeJogador, "JOIN"));
 
             return true;
 

@@ -4,19 +4,29 @@ import java.io.Serializable;
 
 public class Mensagem implements Serializable {
 
-    private String autor;
-    private String texto;
+    private static final long serialVersionUID = 1L;
 
-    public Mensagem(String autor, String texto) {
-        this.autor = autor;
-        this.texto = texto;
+    private final MessagesEnum type;  // O Enum (LOGIN, ANSWER, etc.)
+    private final Object content; // O conteúdo (String[], Integer, etc.)
+
+    // Construtor
+    public Mensagem(MessagesEnum type, Object content) {
+        this.type = type;
+        this.content = content;
     }
 
-    public String getAutor() {
-        return autor;
+    // --- ESTES SÃO OS MÉTODOS QUE O JAVA NÃO ESTAVA A ENCONTRAR ---
+
+    public MessagesEnum getType() {
+        return type;
     }
 
-    public String getTexto() {
-        return texto;
+    public Object getContent() {
+        return content;
+    }
+
+    @Override
+    public String toString() {
+        return "Msg{" + type + "}";
     }
 }

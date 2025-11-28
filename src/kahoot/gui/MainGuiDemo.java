@@ -1,7 +1,7 @@
 package kahoot.gui;
 
 import com.google.gson.Gson;
-import kahoot.game.GState;
+import kahoot.game.GameState;
 import kahoot.game.Question;
 import kahoot.game.Quiz;
 import kahoot.game.Team;
@@ -94,7 +94,7 @@ public class MainGuiDemo {
             }
 
             // Estado do jogo
-            GState estado = new GState(perguntas);
+            GameState estado = new GameState(perguntas);
 
             
 
