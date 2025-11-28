@@ -1,231 +1,183 @@
 package kahoot.gui;
 
-import com.google.gson.Gson;
-import kahoot.game.GameState;
 import kahoot.game.Question;
-import kahoot.game.Quiz;
 import kahoot.game.Team;
+import kahoot.messages.Mensagem;
+import kahoot.messages.MessagesEnum;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ActionListener;
-import java.io.FileReader;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.net.Socket;
+import java.util.Map;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class MainGuiDemo {
 
-    private static final int TEMPO_POR_PERGUNTA = 10; // segundos
-    private static Timer swingTimer;
-    private static AtomicInteger tempoRestante;
+    // Configuração de Rede
+    private static final String SERVER_ADDRESS = "localhost";
+    private static final int SERVER_PORT = 5001;
+
+    // Streams para comunicação
+    private static ObjectOutputStream out;
+    private static ObjectInputStream in;
+    private static Socket socket;
+
+    // Elementos da GUI
+    private static Gui gui;
+    private static JButton[] botoes;
 
     public static void main(String[] args) {
 
-    	SwingUtilities.invokeLater(() -> {
+        SwingUtilities.invokeLater(() -> {
 
-    	    // =============================
-    	    // 1) Escolher modo de jogo
-    	    // =============================
-    	    GameMode modo = ModoEscolha.escolherModo();
+            // =============================
+            // 1) LOGIN (Interface Gráfica)
+            // =============================
+            GameMode modo = ModoEscolha.escolherModo();
+            if (modo == null) System.exit(0);
 
-    	    if (modo == null) {
-    	        JOptionPane.showMessageDialog(null, "Nenhum modo selecionado!", "Erro", JOptionPane.ERROR_MESSAGE);
-    	        System.exit(0);
-    	    }
+            String username;
+            String teamName = null;
 
-    	    // Nome/jogador ou equipa
-    	    String jogador;
+            if (modo == GameMode.INDIVIDUAL) {
+                username = JOptionPane.showInputDialog(null, "Qual é o teu nome?", "Login", JOptionPane.QUESTION_MESSAGE);
+                if (username == null || username.isBlank()) System.exit(0);
+            } else {
+                Team[] equipasDisponiveis = { new Team("Azuis"), new Team("Vermelhos"), new Team("Verdes") };
+                Team equipaEscolhida = TeamEscolha.selecionarEquipa(equipasDisponiveis);
+                if (equipaEscolhida == null) System.exit(0);
 
-    	    if (modo == GameMode.INDIVIDUAL) {
-    	        jogador = JOptionPane.showInputDialog(
-    	                null,
-    	                "Qual é o teu nome?",
-    	                "Jogador Individual",
-    	                JOptionPane.QUESTION_MESSAGE
-    	        );
+                // Em equipa, o username pode ser algo genérico ou pedido também
+                username = JOptionPane.showInputDialog(null, "O teu nome na equipa:", "Login", JOptionPane.QUESTION_MESSAGE);
+                teamName = equipaEscolhida.getNome();
+            }
 
-    	        if (jogador == null || jogador.isBlank()) {
-    	            JOptionPane.showMessageDialog(null, "Nome inválido!", "Erro", JOptionPane.ERROR_MESSAGE);
-    	            System.exit(0);
-    	        }
-
-    	    } else { // EQUIPA
-
-    	        Team[] equipasDisponiveis = {
-    	                new Team("Azuis"),
-    	                new Team("Vermelhos"),
-    	                new Team("Verdes")
-    	        };
-
-    	        Team equipaEscolhida = TeamEscolha.selecionarEquipa(equipasDisponiveis);
-
-    	        if (equipaEscolhida == null) {
-    	            JOptionPane.showMessageDialog(null, "Nenhuma equipa selecionada!", "Erro", JOptionPane.ERROR_MESSAGE);
-    	            System.exit(0);
-    	        }
-
-    	        jogador = equipaEscolhida.getNome(); // usa o nome da equipa
-    	    }
-
-    	    System.out.println("Modo = " + modo);
-    	    System.out.println("Jogador/Equipa = " + jogador);
             // ==================================
-            // 2) Criar GUI
+            // 2) CONECTAR AO SERVIDOR
             // ==================================
-            Gui gui = new Gui();
+            if (!conectarAoServidor(username, teamName)) {
+                return; // Falha na conexão
+            }
+
+            // ==================================
+            // 3) INICIALIZAR GUI
+            // ==================================
+            gui = new Gui();
             gui.setVisible(true);
+            gui.log("🔌 Ligado ao servidor. À espera de perguntas...");
 
-            // ==================================
-            // 3) Carregar perguntas do JSON
-            // ==================================
-            List<Question> perguntas;
-            try (FileReader reader = new FileReader("quizzes.json")) {
-                Gson gson = new Gson();
-                Quiz quiz = gson.fromJson(reader, Quiz.class);
-                perguntas = quiz.questions;
-            } catch (Exception e) {
-                gui.log("❌ Erro ao ler quizzes.json: " + e.getMessage());
-                return;
-            }
-
-            if (perguntas == null || perguntas.isEmpty()) {
-                gui.log("❌ Nenhuma pergunta encontrada!");
-                return;
-            }
-
-            // Estado do jogo
-            GameState estado = new GameState(perguntas);
-
-            
-
-            // Botões
-            JButton[] botoes = {
-                    gui.getBotaoOpcaoA(),
-                    gui.getBotaoOpcaoB(),
-                    gui.getBotaoOpcaoC(),
-                    gui.getBotaoOpcaoD()
+            // Mapear botões para fácil acesso
+            botoes = new JButton[]{
+                    gui.getBotaoOpcaoA(), gui.getBotaoOpcaoB(),
+                    gui.getBotaoOpcaoC(), gui.getBotaoOpcaoD()
             };
 
-
-            final Runnable[] mostrarPerguntaHolder = new Runnable[1];
-            final Runnable[] irParaProximaHolder = new Runnable[1];
-
-            tempoRestante = new AtomicInteger(TEMPO_POR_PERGUNTA);
+            // Configurar a ação dos botões (ENVIAR RESPOSTA VIA REDE)
+            configurarBotoes();
 
             // ==================================
-            // 4) Função quando o tempo acaba
+            // 4) THREAD DE RECEÇÃO (Ouvir o Servidor)
             // ==================================
-            Runnable esgotouTempo = () -> {
-                swingTimer.stop();
-                Question q = estado.getPerguntaAtual();
-                if (q == null) return;
-
-                for (JButton b : botoes) b.setEnabled(false);
-                botoes[q.correct].setBackground(new Color(144, 238, 144));
-
-                gui.log("⏰ Tempo esgotado! A correta era: " + q.options[q.correct]);
-
-                new Timer(1500, ev -> {
-                    ((Timer) ev.getSource()).stop();
-                    irParaProximaHolder[0].run();
-                }).start();
-            };
-
-            // Timer
-            swingTimer = new Timer(1000, e -> {
-                int tempo = tempoRestante.decrementAndGet();
-                gui.atualizarTimer(tempo);
-                if (tempo <= 0) esgotouTempo.run();
-            });
-
-            // ==================================
-            // 5) Avançar para próxima pergunta
-            // ==================================
-            irParaProximaHolder[0] = () -> {
-                if (estado.proximaPergunta()) {
-                    mostrarPerguntaHolder[0].run();
-                } else {
-                    swingTimer.stop();
-                    gui.atualizarPergunta("🏁 Fim do quiz! Pontuação final: " +
-                            estado.getPontuacao(jogador));
-                    gui.atualizarOpcoes(new String[]{});
-                    gui.log("🎉 Jogo terminado!");
-                    gui.atualizarClassificacao(estado.getPlacar());
-                }
-            };
-
-            // ==================================
-            // 6) Mostrar pergunta
-            // ==================================
-            mostrarPerguntaHolder[0] = () -> {
-                Question q = estado.getPerguntaAtual();
-                if (q == null) return;
-
-                gui.atualizarPergunta(q.question);
-
-                for (int i = 0; i < botoes.length; i++) {
-                    String prefixo = switch (i) {
-                        case 0 -> "A) ";
-                        case 1 -> "B) ";
-                        case 2 -> "C) ";
-                        case 3 -> "D) ";
-                        default -> "";
-                    };
-
-                    botoes[i].setText(prefixo + q.options[i]);
-                    botoes[i].setEnabled(true);
-                    botoes[i].setBackground(null);
-                }
-
-                gui.atualizarPontuacao(estado.getPontuacao(jogador));
-                gui.atualizarClassificacao(estado.getPlacar());
-
-                tempoRestante.set(TEMPO_POR_PERGUNTA);
-                gui.atualizarTimer(TEMPO_POR_PERGUNTA);
-                swingTimer.start();
-            };
-
-            // ==================================
-            // 7) Listener das respostas
-            // ==================================
-            ActionListener responder = e -> {
-                swingTimer.stop();
-
-                Question q = estado.getPerguntaAtual();
-                JButton escolhido = (JButton) e.getSource();
-
-                int resposta = -1;
-                for (int i = 0; i < botoes.length; i++) {
-                    if (botoes[i] == escolhido) resposta = i;
-                }
-
-                for (JButton b : botoes) b.setEnabled(false);
-
-                if (resposta == q.correct) {
-                    escolhido.setBackground(new Color(144, 238, 144)); // Verde
-                    gui.log("✅ Correto! +" + q.points + " pontos");
-                    estado.adicionarPontos(jogador, q.points);
-                    gui.atualizarPontuacao(estado.getPontuacao(jogador));
-                } else {
-                    escolhido.setBackground(new Color(255, 99, 71)); // Vermelho
-                    botoes[q.correct].setBackground(new Color(144, 238, 144));
-                    gui.log("❌ Errado. Correta: " + q.options[q.correct]);
-                }
-
-                gui.atualizarClassificacao(estado.getPlacar());
-
-                new Timer(1500, ev -> {
-                    ((Timer) ev.getSource()).stop();
-                    irParaProximaHolder[0].run();
-                }).start();
-            };
-
-            for (JButton botao : botoes) botao.addActionListener(responder);
-
-            // Primeira pergunta
-            mostrarPerguntaHolder[0].run();
+            new Thread(MainGuiDemo::ouvirServidor).start();
         });
     }
-}
 
-// teste push
+    private static boolean conectarAoServidor(String username, String teamName) {
+        try {
+            socket = new Socket(SERVER_ADDRESS, SERVER_PORT);
+            out = new ObjectOutputStream(socket.getOutputStream());
+            in = new ObjectInputStream(socket.getInputStream());
+
+            // Enviar Mensagem de Login usando o ENUM
+            String[] dadosLogin = {username, teamName};
+            out.writeObject(new Mensagem(MessagesEnum.LOGIN, dadosLogin));
+            out.flush();
+
+            return true;
+        } catch (IOException e) {
+            JOptionPane.showMessageDialog(null, "Erro ao ligar ao servidor: " + e.getMessage());
+            return false;
+        }
+    }
+
+    private static void configurarBotoes() {
+        for (int i = 0; i < botoes.length; i++) {
+            int indiceOpcao = i; // Necessário para usar na lambda
+            botoes[i].addActionListener(e -> {
+                try {
+                    // Bloqueia botões para não responder 2 vezes
+                    for (JButton b : botoes) b.setEnabled(false);
+
+                    // ENVIA A RESPOSTA (Apenas o índice)
+                    out.writeObject(new Mensagem(MessagesEnum.ANSWER, indiceOpcao));
+                    out.flush();
+
+                    gui.log("📤 Resposta enviada: " + (indiceOpcao + 1));
+
+                } catch (IOException ex) {
+                    gui.log("❌ Erro ao enviar resposta.");
+                }
+            });
+        }
+    }
+
+    // O Loop infinito que processa o que o Servidor manda
+    private static void ouvirServidor() {
+        try {
+            while (true) {
+                // Lê a mensagem genérica
+                Mensagem msg = (Mensagem) in.readObject();
+
+                // Atualiza a GUI (sempre dentro do invokeLater para Thread Safety)
+                SwingUtilities.invokeLater(() -> processarMensagem(msg));
+            }
+        } catch (Exception e) {
+            SwingUtilities.invokeLater(() -> gui.log("❌ Desconectado do servidor."));
+        }
+    }
+
+    private static void processarMensagem(Mensagem msg) {
+        switch (msg.getType()) {
+            case QUESTION:
+                Question q = (Question) msg.getContent();
+                atualizarInterfaceParaPergunta(q);
+                break;
+
+            case SCORE:
+                @SuppressWarnings("unchecked")
+                Map<String, Integer> placar = (Map<String, Integer>) msg.getContent();
+                gui.atualizarClassificacao(placar);
+                gui.log("📊 Placar atualizado.");
+                break;
+
+            case ERROR:
+                String erro = (String) msg.getContent();
+                JOptionPane.showMessageDialog(gui, erro, "Erro do Servidor", JOptionPane.ERROR_MESSAGE);
+                break;
+
+            default:
+                System.out.println("Tipo desconhecido: " + msg.getType());
+        }
+    }
+
+    private static void atualizarInterfaceParaPergunta(Question q) {
+        gui.atualizarPergunta(q.getText()); // Nota: verifica se na classe Question o getter é getText() ou getQuestion()
+
+        List<String> opcoes = q.getOptions();
+        for (int i = 0; i < botoes.length; i++) {
+            if (i < opcoes.size()) {
+                botoes[i].setText(opcoes.get(i));
+                botoes[i].setEnabled(true);
+                botoes[i].setBackground(null); // Reset cor
+            } else {
+                botoes[i].setText("");
+                botoes[i].setEnabled(false);
+            }
+        }
+        gui.log("❓ Nova pergunta recebida!");
+        // O Timer agora seria gerido visualmente ou por mensagens de "Tempo Restante" do servidor
+    }
+}

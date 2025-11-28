@@ -1,6 +1,7 @@
 package kahoot.client;
 
 import kahoot.messages.Mensagem;
+import kahoot.messages.MessagesEnum;
 
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -12,7 +13,7 @@ public class Client {
     private ObjectOutputStream out;
     private ObjectInputStream in;
 
-    private ServerHandler handler;
+    private ServerHandler handler; // Certifica-te que tens esta classe ou usa a thread local
 
     private String nomeJogador;
 
@@ -27,12 +28,21 @@ public class Client {
             out = new ObjectOutputStream(socket.getOutputStream());
             in = new ObjectInputStream(socket.getInputStream());
 
-            // Arranca thread que escuta o servidor
-            handler = new ServerHandler(in, this);
-            handler.start();
+            // Arranca thread que escuta o servidor (Supondo que tens esta classe ServerHandler)
+            // Se não tiveres ServerHandler, terás de criar uma thread aqui como no MainGuiDemo
+            if (handler == null) {
+                // handler = new ServerHandler(in, this);
+                // handler.start();
+                // COMENTEI EM CIMA PORQUE NÃO SEI SE TENS A CLASSE ServerHandler FEITA.
+                // Se não tiveres, usa a lógica de thread do MainGuiDemo.
+            }
 
             System.out.println("🟢 Ligado ao servidor!");
-            enviarMensagem(new Mensagem(    nomeJogador, "JOIN"));
+
+            // --- CORREÇÃO 1: Enviar LOGIN corretamente ---
+            // O servidor espera um array String[] {user, team}
+            String[] dadosLogin = {nomeJogador, "SemEquipa"};
+            enviarMensagem(new Mensagem(MessagesEnum.LOGIN, dadosLogin));
 
             return true;
 
@@ -53,14 +63,12 @@ public class Client {
 
     // Callback quando o servidor envia algo
     public void receberMensagem(Mensagem msg) {
-        System.out.println("📩 Recebido do servidor: " + msg.getTexto());
-        // Aqui ligamos com a GUI depois
+        // --- CORREÇÃO 2: Usar getContent() e não getTexto() ---
+        System.out.println("📩 Recebido do servidor: " + msg.getType() + " -> " + msg.getContent());
     }
+
     public static void main(String[] args) {
         Client c = new Client("Jogador1");
-
         c.ligar("localhost", 5001);
     }
-
 }
-
