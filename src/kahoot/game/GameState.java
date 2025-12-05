@@ -16,6 +16,9 @@ public class GameState {
         // Inicializa a tua estrutura segura
         this.pontuacoes = new ConcurrentHashMap<>();
     }
+    public synchronized boolean temPerguntaAtual() {
+        return indiceAtual < perguntas.size();
+    }
 
     public synchronized Question getPerguntaAtual() {
         if (indiceAtual < perguntas.size()) {

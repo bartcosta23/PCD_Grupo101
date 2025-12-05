@@ -5,5 +5,7 @@ public enum MessagesEnum {
     QUESTION,   // Servidor -> Cliente (Conteúdo: objeto Question)
     ANSWER,     // Cliente -> Servidor (Conteúdo: Integer index)
     SCORE,      // Servidor -> Cliente (Conteúdo: Map placar)
-    ERROR       // Servidor -> Cliente (Conteúdo: String erro)
-}
+    ERROR ,      // Servidor -> Cliente (Conteúdo: String erro)
+    ANSWER_RESULT,
+
+    }

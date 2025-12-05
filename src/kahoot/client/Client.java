@@ -69,6 +69,6 @@ public class Client {
 
     public static void main(String[] args) {
         Client c = new Client("Jogador1");
-        c.ligar("localhost", 5001);
+        c.ligar("localhost", 12345);
     }
 }
