@@ -1,12 +1,12 @@
 package kahoot.Concorrencia;
 
-
 public class TeamBarrier {
-    private int count;                // Jogadores na equipa que faltam chegar
+    private int count;
     private final int totalPlayers;
     private final long timeout;
-    private boolean broken = false;   // Se o tempo acabou
-    private final Runnable barrierAction; // Ação para calcular pontuação
+    private boolean broken = false;
+    private boolean actionExecuted = false; // 🔥 NOVO: Evita iniciar o jogo várias vezes
+    private final Runnable barrierAction;
 
     public TeamBarrier(int totalPlayers, long timeout, Runnable barrierAction) {
         this.totalPlayers = totalPlayers;
@@ -15,39 +15,39 @@ public class TeamBarrier {
         this.barrierAction = barrierAction;
     }
 
-    // Chamado pelo GameHandler de cada jogador da equipa
     public synchronized void await() throws InterruptedException {
         long startTime = System.currentTimeMillis();
         long timeRemaining = timeout;
 
         count--;
 
-        // Se chegou o último jogador (ou se a barreira já estava partida pelo tempo)
+        // Se é o último a chegar OU a barreira já partiu (tempo acabou)
         if (count == 0 || broken) {
-            // Só o último executa a lógica de pontuação (se não foi timeout)
-            if (!broken && count == 0 && barrierAction != null) {
-                barrierAction.run();
-            }
-            broken = true; // Marca como aberta para futuros atrasados
-            notifyAll();   // Acorda todos os colegas de equipa
+            runActionOnce(); // Executa a ação de forma segura
+            broken = true;
+            notifyAll();
             return;
         }
 
-        // Bloqueia à espera dos colegas
+        // Bloqueia à espera
         while (count > 0 && timeRemaining > 0 && !broken) {
             wait(timeRemaining);
             timeRemaining = timeout - (System.currentTimeMillis() - startTime);
         }
 
-        // Se acordou e o contador > 0, foi timeout
+        // Se saiu do wait: ou chegou toda a gente, ou foi TIMEOUT
         if (count > 0) {
             broken = true;
-            notifyAll(); // Acorda os outros que ainda estejam à espera
-            // Aqui, segundo o enunciado, também deve correr a barrierAction
-            // ou uma lógica de "falha" se necessário.
-            if (barrierAction != null) {
-                barrierAction.run();
-            }
+            runActionOnce(); // Executa a ação de forma segura no timeout
+            notifyAll();
+        }
+    }
+
+    // 🔥 Garante que o GameLoop só arranca uma vez
+    private void runActionOnce() {
+        if (!actionExecuted && barrierAction != null) {
+            actionExecuted = true;
+            barrierAction.run();
         }
     }
 }
