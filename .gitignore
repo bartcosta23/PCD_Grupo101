@@ -1,1 +1,19 @@
-/bin/
+# Ignorar ficheiros do IntelliJ
+.idea/
+*.iml
+*.iws
+
+# Ignorar ficheiros do Eclipse
+.settings/
+.classpath
+.project
+
+# Ignorar ficheiros compilados (MUITO IMPORTANTE)
+out/
+bin/
+classes/
+*.class
+
+# Ignorar ficheiros do sistema operativo
+.DS_Store
+Thumbs.db
