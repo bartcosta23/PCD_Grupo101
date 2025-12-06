@@ -17,6 +17,7 @@ public class GameLoop extends Thread {
     public GameLoop(GameServer server, GameState gameState) {
         this.server = server;
         this.gameState = gameState;
+        // Assume-se que getClients() devolve a referência para a lista viva
         this.clientes = server.getClients();
     }
 
@@ -24,54 +25,77 @@ public class GameLoop extends Thread {
     public void run() {
         System.out.println("🎮 GameLoop iniciado.");
 
-        while (true) {
+        // Pequena pausa inicial para todos se prepararem
+        esperar(2000);
 
-            // 1 ▬▬▬ Não há mais perguntas → terminar
+        while (true) {
+            // 1 ▬▬▬ Verificar se há perguntas
             if (!gameState.temPerguntaAtual()) {
-                System.out.println("🏁 Sem mais perguntas. Jogo acabou.");
                 break;
             }
 
             // 2 ▬▬▬ Enviar pergunta
             Question q = gameState.getPerguntaAtual();
             System.out.println("📤 Enviando pergunta: " + q.getText());
-
             server.broadcast(new Mensagem(MessagesEnum.QUESTION, q));
 
-
-            // 3 ▬▬▬ Esperar respostas
+            // 3 ▬▬▬ Sincronização (Respostas)
             try {
-                CountDownLatch latch = new CountDownLatch(
-                        2,                      // fator bônus
-                        clientes.size(),        // quantos recebem bónus
-                        15000,                  // tempo máximo (15s)
-                        clientes.size()         // total de jogadores
-                );
+                // Definição do Latch:
+                // Fator Bonus: 2 (multiplicador)
+                // Quem recebe bonus: Math.min(3, size) -> Só os 3 primeiros ganham extra!
+                // Timeout: 15s
+                // Total jogadores: size
+                int totalJogadores = clientes.size();
+                int numBonus = Math.min(3, totalJogadores); // Ex: Só top 3 ganha bonus
 
-                // Cada Handler precisa do latch
-                for (GameHandler handler : clientes) {
-                    handler.setLatch(latch);
+                CountDownLatch latch = new CountDownLatch(2, numBonus, 15000, totalJogadores);
+
+                // Passar o latch a todos os handlers ativos
+                // Nota: É importante fazer isto num bloco synchronized se a lista puder mudar
+                synchronized (clientes) {
+                    for (GameHandler handler : clientes) {
+                        handler.setLatch(latch);
+                    }
                 }
 
-                latch.await();
+                System.out.println("⏳ À espera de respostas...");
+                latch.await(); // Bloqueia aqui até todos responderem ou timeout
 
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
 
             // 4 ▬▬▬ Enviar placar
-            server.broadcast(new Mensagem(
-                    MessagesEnum.SCORE,
-                    gameState.getPlacar()
-            ));
+            System.out.println("📊 A enviar classificações...");
+            server.broadcast(new Mensagem(MessagesEnum.SCORE, gameState.getPlacar()));
 
-            // 5 ▬▬▬ Passar para a próxima
+            // 🔥 CORREÇÃO: Esperar 5 segundos para os alunos verem os pontos!
+            esperar(2000);
+
+            // 5 ▬▬▬ Avançar
             if (!gameState.proximaPergunta()) {
-                System.out.println("🏁 Última pergunta terminada.");
+                System.out.println("🏁 Perguntas acabaram.");
                 break;
             }
         }
 
-        System.out.println("🏁 GameLoop terminou.");
+        // 6 ▬▬▬ FIM DO JOGO
+        System.out.println("🏆 Jogo Terminado. A notificar clientes.");
+
+        // (Opcional) Podes criar um tipo MessagesEnum.GAME_OVER
+        // Ou enviar o Score final uma última vez com uma flag especial
+        // server.broadcast(new Mensagem(MessagesEnum.GAME_OVER, "Fim!"));
+
+        System.out.println("🏁 Thread GameLoop fechada.");
+    }
+
+    // Método auxiliar para não encher o código de try-catch
+    private void esperar(int ms) {
+        try {
+            Thread.sleep(ms);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 }
