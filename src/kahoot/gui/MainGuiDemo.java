@@ -15,6 +15,7 @@ import java.util.Map;
 
 public class MainGuiDemo {
 
+    //é aqui que se define a socket
     private static final String SERVER_ADDRESS = "localhost";
     private static final int SERVER_PORT = 12345;
 
