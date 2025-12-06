@@ -8,11 +8,21 @@ public class Player implements Serializable {
     private final String username;
     private int score;
     private Team team; // Referência para a equipa (pode ser null se for jogo individual)
+    private int lastAnswer = -1;
+
 
     public Player(String username) {
         this.username = username;
         this.score = 0;
         this.team = null;
+    }
+
+    public void setLastAnswer(int answer){
+        this.lastAnswer = answer;
+    }
+
+    public int getLastAnswer(){
+        return lastAnswer;
     }
 
     // --- MÉTODOS DE DADOS (Imutáveis ou Simples) ---

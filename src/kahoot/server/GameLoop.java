@@ -1,8 +1,11 @@
 package kahoot.server;
 
 import kahoot.Concorrencia.CountDownLatch;
+import kahoot.Concorrencia.TeamBarrier;
 import kahoot.game.GameState;
+import kahoot.game.Player;
 import kahoot.game.Question;
+import kahoot.game.Team;
 import kahoot.messages.Mensagem;
 import kahoot.messages.MessagesEnum;
 
@@ -14,18 +17,18 @@ public class GameLoop extends Thread {
     private final GameState gameState;
     private final List<GameHandler> clientes;
 
+    // Tempo base para responder (ex: 20 segundos)
+    private static final int TIMEOUT_RONDA = 20000;
+
     public GameLoop(GameServer server, GameState gameState) {
         this.server = server;
         this.gameState = gameState;
-        // Assume-se que getClients() devolve a referência para a lista viva
         this.clientes = server.getClients();
     }
 
     @Override
     public void run() {
         System.out.println("🎮 GameLoop iniciado.");
-
-        // Pequena pausa inicial para todos se prepararem
         esperar(2000);
 
         while (true) {
@@ -34,68 +37,111 @@ public class GameLoop extends Thread {
                 break;
             }
 
-            // 2 ▬▬▬ Enviar pergunta
             Question q = gameState.getPerguntaAtual();
-            System.out.println("📤 Enviando pergunta: " + q.getText());
-            server.broadcast(new Mensagem(MessagesEnum.QUESTION, q));
+            boolean isTeamRound = gameState.isRoundTeam(); // Verifica o tipo de ronda
 
-            // 3 ▬▬▬ Sincronização (Respostas)
-            try {
-                // Definição do Latch:
-                // Fator Bonus: 2 (multiplicador)
-                // Quem recebe bonus: Math.min(3, size) -> Só os 3 primeiros ganham extra!
-                // Timeout: 15s
-                // Total jogadores: size
-                int totalJogadores = clientes.size();
-                int numBonus = Math.min(3, totalJogadores); // Ex: Só top 3 ganha bonus
+            System.out.println("📤 Enviando pergunta (" + (isTeamRound ? "EQUIPA" : "INDIVIDUAL") + "): " + q.getText());
 
-                CountDownLatch latch = new CountDownLatch(2, numBonus, 15000, totalJogadores);
+            //server.broadcast(new Mensagem(MessagesEnum.QUESTION, q));
 
-                // Passar o latch a todos os handlers ativos
-                // Nota: É importante fazer isto num bloco synchronized se a lista puder mudar
-                synchronized (clientes) {
-                    for (GameHandler handler : clientes) {
-                        handler.setLatch(latch);
-                    }
+            Object[] pacotePergunta = new Object[]{ q, isTeamRound };
+            server.broadcast(new Mensagem(MessagesEnum.QUESTION, pacotePergunta));
+
+            // 2 ▬▬▬ PREPARAÇÃO DA CONCORRÊNCIA
+            CountDownLatch mainLatch; // O Latch que segura o SERVIDOR
+
+            if (isTeamRound) {
+                // ================= MODE EQUIPA =================
+                // Configurar Barreiras para cada Equipa
+                List<Team> equipas = server.getTeams(); // Assume que tens este método no Server
+
+                for (Team equipa : equipas) {
+                    // Ação que corre quando a equipa toda responder (ou timeout)
+                    Runnable acaoPontuacao = () -> {
+                        calcularPontuacaoEquipa(equipa, q);
+                    };
+
+                    // Cria Barreira: N jogadores da equipa, Timeout, Ação
+                    TeamBarrier barreira = new TeamBarrier(equipa.getMembers().size(), TIMEOUT_RONDA, acaoPontuacao);
+                    equipa.setBarreiraAtual(barreira);
                 }
 
-                System.out.println("⏳ À espera de respostas...");
-                latch.await(); // Bloqueia aqui até todos responderem ou timeout
+                // Cria um Latch simples para o GameLoop esperar (sem bónus)
+                // Serve apenas para acordar o servidor quando todos responderem
+                mainLatch = new CountDownLatch(1, 0, TIMEOUT_RONDA, clientes.size());
 
+            } else {
+                // ================= MODE INDIVIDUAL =================
+                // Lógica original: Bónus para os primeiros 3
+                int numBonus = Math.min(3, clientes.size());
+                mainLatch = new CountDownLatch(2, numBonus, TIMEOUT_RONDA, clientes.size());
+
+                // Limpar barreiras antigas (boa prática)
+                for(Team t : server.getTeams()) t.setBarreiraAtual(null);
+            }
+
+            // 3 ▬▬▬ DISTRIBUIR O LATCH E ESPERAR
+            synchronized (clientes) {
+                for (GameHandler handler : clientes) {
+                    handler.setLatch(mainLatch);
+                    // O Handler saberá se deve usar Barreira ou não vendo se a sua Equipa tem barreira != null
+                    // OU podes setar uma flag no handler: handler.setTeamMode(isTeamRound);
+                }
+            }
+
+            System.out.println("⏳ À espera de respostas...");
+            try {
+                mainLatch.await(); // Bloqueia o servidor aqui
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
 
-            // 4 ▬▬▬ Enviar placar
+            // 4 ▬▬▬ Enviar placar e Avançar
             System.out.println("📊 A enviar classificações...");
             server.broadcast(new Mensagem(MessagesEnum.SCORE, gameState.getPlacar()));
-
-            // 🔥 CORREÇÃO: Esperar 5 segundos para os alunos verem os pontos!
             esperar(2000);
 
-            // 5 ▬▬▬ Avançar
             if (!gameState.proximaPergunta()) {
-                System.out.println("🏁 Perguntas acabaram.");
                 break;
             }
         }
 
-        // 6 ▬▬▬ FIM DO JOGO
-        System.out.println("🏆 Jogo Terminado. A notificar clientes.");
-
-        // (Opcional) Podes criar um tipo MessagesEnum.GAME_OVER
-        // Ou enviar o Score final uma última vez com uma flag especial
-        // server.broadcast(new Mensagem(MessagesEnum.GAME_OVER, "Fim!"));
-
-        System.out.println("🏁 Thread GameLoop fechada.");
+        System.out.println("🏆 Jogo Terminado.");
+        // Opcional: Enviar mensagem de Fim de Jogo
     }
 
-    // Método auxiliar para não encher o código de try-catch
-    private void esperar(int ms) {
-        try {
-            Thread.sleep(ms);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
+    // --- Lógica Auxiliar de Pontuação de Equipa ---
+    private void calcularPontuacaoEquipa(Team equipa, Question q) {
+        List<Player> membros = equipa.getMembers();
+        boolean todosAcertaram = true;
+        int maxPontosMember = 0;
+
+        // Verifica respostas
+        for (Player p : membros) {
+            int resposta = p.getLastAnswer(); // Tens de guardar a resposta no Player/Handler
+            if (q.isCorrect(resposta)) {
+                maxPontosMember = q.getPoints(); // Guarda a pontuação base
+            } else {
+                todosAcertaram = false;
+            }
         }
+
+        int pontosFinais = 0;
+        if (todosAcertaram && !membros.isEmpty()) {
+            pontosFinais = q.getPoints() * 2; // BÓNUS: Duplica se todos acertarem
+            System.out.println("Equipa " + equipa.getNome() + " ACERTOU TUDO! (Dobro)");
+        } else {
+            pontosFinais = maxPontosMember; // Sem bónus, conta o melhor
+            System.out.println("Equipa " + equipa.getNome() + " parcial/falha.");
+        }
+
+        // Adiciona pontos a todos os membros (ou à equipa no GameState)
+        for (Player p : membros) {
+            gameState.adicionarPontos(p.getUsername(), pontosFinais);
+        }
+    }
+
+    private void esperar(int ms) {
+        try { Thread.sleep(ms); } catch (InterruptedException e) {}
     }
 }

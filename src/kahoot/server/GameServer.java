@@ -69,4 +69,9 @@ public class GameServer {
     public synchronized void broadcast(Mensagem msg) {
         for (GameHandler handler : clients) handler.send(msg);
     }
+
+    public synchronized List<Team> getTeams() {
+        // Retorna uma nova lista com os valores do mapa (as equipas)
+        return new ArrayList<>(mapCodigos.values());
+    }
 }
