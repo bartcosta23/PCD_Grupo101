@@ -148,6 +148,11 @@ public class MainGuiDemo {
                 Map<String, Integer> placar = (Map<String, Integer>) msg.getContent();
                 gui.atualizarClassificacao(placar);
             }
+            case GAME_OVER -> {
+                Map<String, Integer> placarFinal = (Map<String, Integer>) msg.getContent();
+                gui.mostrarPopupFimDeJogo(placarFinal);
+
+            }
         }
     }
 

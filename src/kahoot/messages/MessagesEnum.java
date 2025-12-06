@@ -7,5 +7,6 @@ public enum MessagesEnum {
     SCORE,      // Servidor -> Cliente (Conteúdo: Map placar)
     ERROR ,      // Servidor -> Cliente (Conteúdo: String erro)
     ANSWER_RESULT,
+    GAME_OVER
 
     }

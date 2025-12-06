@@ -125,8 +125,21 @@ public class GameLoop extends Thread {
             }
         }
 
-        System.out.println("🏆 Jogo Terminado.");
-        // Opcional: Enviar mensagem de Fim de Jogo
+        System.out.println("🏆 Jogo Terminado. A enviar resultados finais...");
+
+        // 1. Recalcular Pontuações Finais (Igual ao que fazes dentro do loop)
+        ConcurrentHashMap<String, Integer> placarFinal = new ConcurrentHashMap<>();
+        for (Team t : server.getTeams()) {
+            int totalEquipa = 0;
+            for (Player p : t.getMembers()) {
+                totalEquipa += gameState.getPontuacao(p.getUsername());
+            }
+            placarFinal.put(t.getNome(), totalEquipa);
+        }
+
+        // 2. Enviar Mensagem de GAME_OVER com o mapa
+        server.broadcast(new Mensagem(MessagesEnum.GAME_OVER, placarFinal.snapshot()));
+        esperar(2000);
     }
 
     // --- Lógica Auxiliar de Pontuação de Equipa ---

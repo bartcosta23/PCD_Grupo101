@@ -169,4 +169,26 @@ public class Gui extends JFrame {
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> new Gui().setVisible(true));
     }
+
+    // Em Gui.java
+
+    public void mostrarPopupFimDeJogo(Map<String, Integer> placar) {
+        SwingUtilities.invokeLater(() -> {
+            StringBuilder sb = new StringBuilder();
+            sb.append("🏁 FIM DO JOGO! 🏁\n\n");
+            sb.append("🏆 Classificação Final:\n");
+
+            placar.entrySet().stream()
+                    .sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
+                    .forEach(entry -> {
+                        sb.append(String.format("👉 %s : %d pontos\n", entry.getKey(), entry.getValue()));
+                    });
+
+
+            JOptionPane.showMessageDialog(this, sb.toString(), "Resultados Finais", JOptionPane.INFORMATION_MESSAGE);
+
+            // 🔥 SÓ AGORA É QUE FECHAMOS A JANELA
+            System.exit(0);
+        });
+    }
 }
