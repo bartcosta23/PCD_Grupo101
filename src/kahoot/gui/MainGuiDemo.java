@@ -25,8 +25,9 @@ public class MainGuiDemo {
     private static JButton[] botoes;
 
     // Timer
-    private static Timer timer;
+    private static GameTimer timer;
     private static int segundosRestantes;
+
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
@@ -159,19 +160,47 @@ public class MainGuiDemo {
 
     private static void iniciarTimer() {
         pararTimer();
+
         segundosRestantes = 10;
         gui.atualizarTimer(segundosRestantes);
-        timer = new Timer(1000, e -> {
-            segundosRestantes--;
-            gui.atualizarTimer(segundosRestantes);
-            if (segundosRestantes <= 0) { pararTimer(); tempoEsgotado(); }
-        });
+
+        timer = new GameTimer(
+                10, // 10 segundos
+                () -> { // Ação a cada segundo (onTick)
+                    segundosRestantes--; // (ou timer.getSegundosRestantes())
+                    gui.atualizarTimer(segundosRestantes);
+                },
+                () -> { // Ação quando acaba (onFinish)
+                    pararTimer();
+                    tempoEsgotado();
+                }
+        );
+
+        // Inicia a thread
         timer.start();
     }
-    private static void pararTimer() { if (timer != null) { timer.stop(); timer = null; } }
+
+    private static void pararTimer() {
+        if (timer != null) {
+            timer.parar();
+            timer = null;
+        }
+    }
+
     private static void tempoEsgotado() {
         gui.log("⏳ Tempo esgotado!");
-        try { out.writeObject(new Mensagem(MessagesEnum.ANSWER, -1)); out.flush(); } catch (Exception ignored) {}
-        for (JButton b : botoes) b.setEnabled(false);
+
+        try {
+            // Envia -1 para indicar que não houve resposta
+            out.writeObject(new Mensagem(MessagesEnum.ANSWER, -1));
+            out.flush();
+        } catch (IOException e) {
+            gui.log("❌ Erro ao enviar timeout ao servidor.");
+        }
+
+        // Bloqueia os botões para ele não tentar clicar depois
+        for (JButton b : botoes) {
+            b.setEnabled(false);
+        }
     }
 }
