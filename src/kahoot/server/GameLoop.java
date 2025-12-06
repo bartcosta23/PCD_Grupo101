@@ -2,10 +2,7 @@ package kahoot.server;
 
 import kahoot.Concorrencia.CountDownLatch;
 import kahoot.Concorrencia.TeamBarrier;
-import kahoot.game.GameState;
-import kahoot.game.Player;
-import kahoot.game.Question;
-import kahoot.game.Team;
+import kahoot.game.*;
 import kahoot.messages.Mensagem;
 import kahoot.messages.MessagesEnum;
 
@@ -73,8 +70,12 @@ public class GameLoop extends Thread {
             } else {
                 // ================= MODE INDIVIDUAL =================
                 // Lógica original: Bónus para os primeiros 3
-                int numBonus = Math.min(3, clientes.size());
-                mainLatch = new CountDownLatch(2, numBonus, TIMEOUT_RONDA, clientes.size());
+                int bonusCount = 2; // Tem de ser taxativo, conforme o enunciado
+                int bonusFactor = 2; // "pontuação será o dobro"
+
+                // Instanciação exata conforme a API pedida:
+                // (bonusFactor, bonusCount, waitPeriod, count)
+                mainLatch = new CountDownLatch(bonusFactor, bonusCount, TIMEOUT_RONDA, clientes.size());
 
                 // Limpar barreiras antigas (boa prática)
                 for(Team t : server.getTeams()) t.setBarreiraAtual(null);
@@ -96,9 +97,27 @@ public class GameLoop extends Thread {
                 e.printStackTrace();
             }
 
-            // 4 ▬▬▬ Enviar placar e Avançar
-            System.out.println("📊 A enviar classificações...");
-            server.broadcast(new Mensagem(MessagesEnum.SCORE, gameState.getPlacar()));
+            // 4 ▬▬▬ CALCULAR E ENVIAR PLACAR DAS EQUIPAS
+            System.out.println("📊 A enviar classificações por equipa...");
+
+            ConcurrentHashMap<String, Integer> placarEquipas = new ConcurrentHashMap<>();
+
+            // 🔥 CORREÇÃO AQUI: Calcular pontos com base no GameState (Onde os pontos estão guardados)
+            for (Team t : server.getTeams()) {
+                int totalEquipa = 0;
+
+                // Soma os pontos de cada membro da equipa, indo buscar ao GameState
+                for (Player p : t.getMembers()) {
+                    totalEquipa += gameState.getPontuacao(p.getUsername());
+                }
+
+                // Guarda Nome da Equipa -> Total Calculado
+                placarEquipas.put(t.getNome(), totalEquipa);
+            }
+
+            // Envia o Snapshot (HashMap normal)
+            server.broadcast(new Mensagem(MessagesEnum.SCORE, placarEquipas.snapshot()));
+
             esperar(2000);
 
             if (!gameState.proximaPergunta()) {
