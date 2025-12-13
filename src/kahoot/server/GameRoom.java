@@ -36,7 +36,7 @@ public class GameRoom {
             this.jogoIniciado = true;
 
             // Passamos 'this' (A Sala) em vez do Server
-            new GameLoop(this, gameState).start();
+            GameServer.iniciarJogo(new GameLoop(this, gameState));
         });
     }
 

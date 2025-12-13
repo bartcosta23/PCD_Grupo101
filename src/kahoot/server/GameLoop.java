@@ -62,7 +62,7 @@ public class GameLoop extends Thread {
             } catch (InterruptedException e) { e.printStackTrace(); }
 
             gameRoom.broadcast(new Mensagem(MessagesEnum.SCORE, gameState.getPlacar()));
-            esperar(8500);
+            esperar(1500);
 
             if (!gameState.proximaPergunta()) break;
 

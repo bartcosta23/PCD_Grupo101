@@ -1,5 +1,6 @@
 package kahoot.server;
 
+import kahoot.Concorrencia.ThreadPool;
 import kahoot.game.Team;
 import java.io.IOException;
 import java.net.ServerSocket;
@@ -18,6 +19,8 @@ public class GameServer extends Thread {
     // MAPA MESTRE: Associa o Código da Equipa (ex: "A1B2") à Sala do Jogo (ex: JOGO-1)
     // Usamos ConcurrentHashMap porque vários clientes e a TUI acedem a isto ao mesmo tempo.
     private static final Map<String, GameRoom> mapaCodigoParaSala = new ConcurrentHashMap<>();
+
+    private static final ThreadPool poolDeJogos = new ThreadPool(5); //apenas p teste ; valor real: 5
 
     private boolean running = true;
     private static final int PORT = 12345;
@@ -58,6 +61,11 @@ public class GameServer extends Thread {
         }
         System.out.println("✅ Jogo [" + sala.getId() + "] registado com sucesso.");
         System.out.println("   ➡ Códigos ativos para esta sala: " + equipas.keySet());
+    }
+
+    public static void iniciarJogo(Runnable gameLoop) {
+        System.out.println("🎱 Jogo submetido à ThreadPool Global.");
+        poolDeJogos.execute(gameLoop);
     }
 
     // ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
