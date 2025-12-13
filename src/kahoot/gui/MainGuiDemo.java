@@ -15,7 +15,6 @@ import java.util.Map;
 
 public class MainGuiDemo {
 
-    //é aqui que se define a socket
     private static final String SERVER_ADDRESS = "localhost";
     private static final int SERVER_PORT = 12345;
 
@@ -49,14 +48,13 @@ public class MainGuiDemo {
             gui.setVisible(true);
             gui.log("🔌 Ligado! Equipa: " + codigoEquipa);
 
-            // Referências para os botões da GUI
             botoes = new JButton[]{
                     gui.getBotaoOpcaoA(), gui.getBotaoOpcaoB(),
                     gui.getBotaoOpcaoC(), gui.getBotaoOpcaoD()
             };
             configurarBotoes();
 
-            // 4. Thread para ouvir mensagens do servidor
+            // 4. Thread para ouvir mensagens
             new Thread(MainGuiDemo::ouvirServidor).start();
         });
     }
@@ -67,12 +65,10 @@ public class MainGuiDemo {
             out = new ObjectOutputStream(socket.getOutputStream());
             in = new ObjectInputStream(socket.getInputStream());
 
-            // Envia Login
             String[] dados = {username, codigoEquipa};
             out.writeObject(new Mensagem(MessagesEnum.LOGIN, dados));
             out.flush();
 
-            // Espera resposta "OK"
             Mensagem resposta = (Mensagem) in.readObject();
             if (resposta.getType() == MessagesEnum.LOGIN && "OK".equals(resposta.getContent())) {
                 return true;
@@ -96,15 +92,11 @@ public class MainGuiDemo {
 
     private static void enviarResposta(int index) {
         try {
-            // Bloqueia botões para não clicar duas vezes
             for (JButton b : botoes) b.setEnabled(false);
-
             out.writeObject(new Mensagem(MessagesEnum.ANSWER, index));
             out.flush();
-
             gui.log("📤 Resposta enviada. A aguardar...");
             pararTimer();
-
         } catch (IOException ex) {
             gui.log("❌ Erro ao enviar.");
         }
@@ -114,7 +106,6 @@ public class MainGuiDemo {
         try {
             while (true) {
                 Mensagem msg = (Mensagem) in.readObject();
-                // Processar na Thread da GUI para evitar erros visuais
                 SwingUtilities.invokeLater(() -> processarMensagem(msg));
             }
         } catch (Exception e) {
@@ -122,58 +113,53 @@ public class MainGuiDemo {
         }
     }
 
-    // ================================================================
-    // 🔥 LÓGICA PRINCIPAL: Recebe mensagens e atualiza a GUI
-    // ================================================================
     private static void processarMensagem(Mensagem msg) {
         switch (msg.getType()) {
             case QUESTION -> {
-                // O Servidor agora envia um Array: [Pergunta, Booleano]
+                // ✅ VOLTÁMOS A LER O ARRAY [Question, Boolean]
                 Object[] dados = (Object[]) msg.getContent();
                 Question q = (Question) dados[0];
                 boolean isTeamMode = (boolean) dados[1];
-
                 mostrarNovaPergunta(q, isTeamMode);
             }
             case ANSWER_RESULT -> {
-                // Recebe: [Indice, Acertou?]
                 Object[] dados = (Object[]) msg.getContent();
                 int index = (int) dados[0];
                 boolean acertou = (boolean) dados[1];
-
                 mostrarFeedback(index, acertou);
             }
             case SCORE -> {
-                // Recebe o Mapa de Pontos
                 Map<String, Integer> placar = (Map<String, Integer>) msg.getContent();
                 gui.atualizarClassificacao(placar);
             }
             case GAME_OVER -> {
-                Map<String, Integer> placarFinal = (Map<String, Integer>) msg.getContent();
-                gui.mostrarPopupFimDeJogo(placarFinal);
-
+                if (msg.getContent() instanceof Map) {
+                    Map<String, Integer> placarFinal = (Map<String, Integer>) msg.getContent();
+                    gui.mostrarPopupFimDeJogo(placarFinal);
+                } else {
+                    JOptionPane.showMessageDialog(null, "🏆 Fim do Jogo!");
+                    System.exit(0);
+                }
             }
         }
     }
 
+    // ✅ RECUPERADO: Método recebe o modo de jogo para atualizar o topo da GUI
     private static void mostrarNovaPergunta(Question q, boolean isTeamMode) {
-        // 1. Resetar Botões (Tirar cores antigas)
         for (JButton b : botoes) {
             b.setBackground(null);
             b.setEnabled(true);
-            b.setOpaque(true); // Garante que a cor reseta
+            b.setOpaque(true);
         }
 
-        // 2. 🔥 ATUALIZAR O TÍTULO DO MODO (A TUA ALTERAÇÃO)
+        // 🔥 ATUALIZA O MODO NO TOPO DA GUI
         if (isTeamMode) {
-            gui.atualizarModo("MODO EQUIPA", Color.black);
+            try { gui.atualizarModo("MODO EQUIPA", Color.BLUE); } catch (Exception e) {}
         } else {
-            gui.atualizarModo("MODO INDIVIDUAL", Color.black);
+            try { gui.atualizarModo("MODO INDIVIDUAL", Color.BLACK); } catch (Exception e) {}
         }
 
-        // 3. Atualizar Texto da Pergunta
         gui.atualizarPergunta(q.getText());
-
         List<String> opcoes = q.getOptions();
         gui.atualizarOpcoes(opcoes.toArray(new String[0]));
 
@@ -181,14 +167,11 @@ public class MainGuiDemo {
     }
 
     private static void mostrarFeedback(int index, boolean acertou) {
-        // Garante que botões estão bloqueados
         for (JButton b : botoes) b.setEnabled(false);
-
         if (index >= 0 && index < 4) {
             JButton btn = botoes[index];
-            btn.setOpaque(true); // Necessário em alguns sistemas (Mac/Linux)
-            btn.setBorderPainted(false); // Ajuda a cor a aparecer
-
+            btn.setOpaque(true);
+            btn.setBorderPainted(false);
             if (acertou) {
                 btn.setBackground(Color.GREEN);
                 gui.log("✅ Acertaste!");
@@ -201,18 +184,17 @@ public class MainGuiDemo {
         }
     }
 
-    // ================= TIMER =================
     private static void iniciarTimer() {
         pararTimer();
-        segundosRestantes = 15; // 15 segundos por pergunta
+        segundosRestantes = 15;
         gui.atualizarTimer(segundosRestantes);
 
         timer = new GameTimer(15,
-                () -> { // Tick
+                () -> {
                     segundosRestantes--;
                     gui.atualizarTimer(segundosRestantes);
                 },
-                () -> { // Finish
+                () -> {
                     tempoEsgotado();
                 }
         );

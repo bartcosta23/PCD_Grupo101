@@ -1,89 +1,77 @@
 package kahoot.server;
 
-import kahoot.messages.*;
-import kahoot.game.*;
-import kahoot.Concorrencia.*;
-import java.io.*;
+import kahoot.Concorrencia.CountDownLatch;
+import kahoot.game.GameState;
+import kahoot.game.Player;
+import kahoot.game.Question;
+import kahoot.game.Team;
+import kahoot.messages.Mensagem;
+import kahoot.messages.MessagesEnum;
+
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.net.Socket;
 
 public class GameHandler extends Thread {
 
-    private Socket socket;
-    private GameServer server;
-    private GameState gameState;
-    private ObjectInputStream in;
+    private final Socket socket;
+    private final GameServer serverCentral;
     private ObjectOutputStream out;
+    private ObjectInputStream in;
+    private GameRoom salaAtual;
     private Player player;
 
-    // Concorrência
-    private TeamBarrier lobbyBarrier;
+    // 🔥 NOVA VARIÁVEL: Para saber a quem dar os pontos
+    private String nomeEquipa;
+
     private CountDownLatch currentLatch;
-    private TeamBarrier currentBarrier;
-    private boolean isTeamMode = false;
+    private boolean isLogged = false;
+    private boolean isTeamMode = true;
 
-    public GameHandler(Socket socket, GameServer server, GameState gameState, TeamBarrier lobbyBarrier) {
+    public GameHandler(Socket socket, GameServer server) {
         this.socket = socket;
-        this.server = server;
-        this.gameState = gameState;
-        this.lobbyBarrier = lobbyBarrier;
-
+        this.serverCentral = server;
         try {
             this.out = new ObjectOutputStream(socket.getOutputStream());
-            this.in  = new ObjectInputStream(socket.getInputStream());
+            this.in = new ObjectInputStream(socket.getInputStream());
         } catch (IOException e) { e.printStackTrace(); }
     }
 
-    // --- SETTERS DE CONCORRÊNCIA ---
-
-    // Chamado pelo GameLoop antes de enviar a pergunta
-    public void setLatch(CountDownLatch latch) {
-        this.currentLatch = latch;
-        // Nota: O latch é usado nos dois modos para avisar o servidor que a thread acabou!
-    }
-
-    public void setBarrier(TeamBarrier barrier) {
-        this.currentBarrier = barrier;
-        // Se receber barreira, ativa o modo equipa
-        this.isTeamMode = (barrier != null);
-    }
+    public void setLatch(CountDownLatch latch) { this.currentLatch = latch; }
+    public void setTeamMode(boolean isTeamMode) { this.isTeamMode = isTeamMode; }
 
     @Override
     public void run() {
+        System.out.println("🧵 Handler a correr na thread: " + Thread.currentThread().getName());
         try {
-            System.out.println("📥 Handler iniciado na thread " + this.getId());
-
-            // 1. Ler e Validar Login
-            Mensagem msgLogin = (Mensagem) in.readObject();
-
-            if (msgLogin.getType() == MessagesEnum.LOGIN) {
-                if (!handleLogin(msgLogin.getContent())) {
-                    server.removeClient(this);
-                    socket.close();
-                    return;
-                }
-            }
-
-            // 2. Esperar na Barreira do Lobby (Início do Jogo)
-            if (lobbyBarrier != null) {
-                lobbyBarrier.await();
-            }
-
-            // 3. Loop Principal do Jogo
-            while (true) {
-                try {
-                    Mensagem msg = (Mensagem) in.readObject();
-
-                    if (msg.getType() == MessagesEnum.ANSWER) {
-                        processarResposta(msg.getContent());
+            if (!isLogged) {
+                Mensagem msgLogin = (Mensagem) in.readObject();
+                if (msgLogin.getType() == MessagesEnum.LOGIN) {
+                    if (handleLogin(msgLogin.getContent())) {
+                        this.isLogged = true;
+                        salaAtual.adicionarJogador(this);
+                        return;
+                    } else {
+                        socket.close(); return;
                     }
-                } catch (EOFException | java.net.SocketException e) {
-                    System.out.println("🔌 Cliente desconectou-se.");
-                    break;
                 }
             }
 
+            if (salaAtual != null && salaAtual.getLobbyBarrier() != null) {
+                System.out.println("⏳ [" + salaAtual.getId() + "] " + player.getUsername() + " à espera...");
+                salaAtual.getLobbyBarrier().await();
+            }
+
+            while (true) {
+                Mensagem msg = (Mensagem) in.readObject();
+                if (msg.getType() == MessagesEnum.ANSWER) {
+                    processarResposta(msg.getContent());
+                }
+            }
         } catch (Exception e) {
-            e.printStackTrace();
+            System.out.println("🔌 Cliente caiu.");
+            if (salaAtual != null) salaAtual.removerJogador(this);
         }
     }
 
@@ -91,77 +79,60 @@ public class GameHandler extends Thread {
         if (content instanceof String[] dados) {
             String username = dados[0];
             String codigo = dados[1];
-            Team equipa = server.getTeamByCode(codigo);
+            GameRoom salaEncontrada = serverCentral.descobrirSala(codigo);
 
-            if (equipa != null && equipa.addPlayer(new Player(username))) {
-                // Recupera a referência real do jogador que foi adicionado à equipa
-                this.player = equipa.getMembers().get(equipa.getMembers().size() - 1);
+            if (salaEncontrada != null) {
+                this.salaAtual = salaEncontrada;
+                this.player = new Player(username);
 
-                System.out.println("✅ Login: " + username + " na equipa " + equipa.getNome());
+                // 🔥 GUARDAR O NOME DA EQUIPA
+                Team t = salaAtual.getTeamByCode(codigo);
+                this.nomeEquipa = t.getNome();
+
                 send(new Mensagem(MessagesEnum.LOGIN, "OK"));
                 return true;
             } else {
-                send(new Mensagem(MessagesEnum.LOGIN, "ERRO: Equipa cheia ou código inválido"));
+                send(new Mensagem(MessagesEnum.LOGIN, "ERRO"));
                 return false;
             }
         }
         return false;
     }
 
-    // 🔥 O MÉTODO CRÍTICO QUE FOI CORRIGIDO
     private void processarResposta(Object content) {
         if (content instanceof Integer opcaoIndex) {
+            GameState gameState = salaAtual.getGameState();
             Question pergunta = gameState.getPerguntaAtual();
 
-            // 1. Guardar a resposta no Jogador (CRUCIAL para o Modo Equipa)
-            // Tens de adicionar setLastAnswer(int) na classe Player!
-            player.setLastAnswer(opcaoIndex);
-
-            // 2. Enviar feedback imediato (acertou/falhou)
             boolean acertou = pergunta.isCorrect(opcaoIndex);
-            send(new Mensagem(MessagesEnum.ANSWER_RESULT, new Object[]{ opcaoIndex, acertou }));
+            send(new Mensagem(MessagesEnum.ANSWER_RESULT, new Object[]{opcaoIndex, acertou}));
 
-            // 3. Sincronização e Pontuação
-            if (isTeamMode) {
-                // === MODO EQUIPA ===
-                if (currentBarrier != null) {
-                    try {
-                        // Espera pelo parceiro.
-                        // Quando sair daqui, a BarrierAction (no GameLoop) JÁ calculou os pontos!
-                        currentBarrier.await();
-                    } catch (InterruptedException e) {
-                        System.out.println("⚠️ Erro na barreira de equipa");
-                    }
+            int pontosBase = acertou ? 1 : 0;
+            int pontosFinais = 0;
+
+            if (currentLatch != null) {
+                if (isTeamMode) {
+                    // Modo Equipa: 1 ponto fixo
+                    currentLatch.countdown(); // (minúsculo, corrigido)
+                    pontosFinais = pontosBase;
+                } else {
+                    // Modo Individual: Bónus de rapidez
+                    int multiplicador = currentLatch.countdown();
+                    pontosFinais = pontosBase * multiplicador;
                 }
 
-                // AVISAR O SERVIDOR QUE ACABEI
-                // Mesmo em equipa, temos de avisar o GameLoop para não ficar bloqueado
-                if (currentLatch != null) {
-                    currentLatch.countdown();
-                }
+                if (pontosFinais > 0) {
+                    // 🔥 CORREÇÃO: Adiciona pontos à EQUIPA, não ao jogador!
+                    // Como o GameState usa um Map, ele vai somar automaticamente se a chave for igual.
+                    gameState.adicionarPontos(this.nomeEquipa, pontosFinais);
 
-            } else {
-                // === MODO INDIVIDUAL ===
-                if (currentLatch != null) {
-                    // countdown() retorna o bónus (2 ou 1)
-                    int bonus = currentLatch.countdown();
-
-                    if (acertou) {
-                        int pontos = pergunta.getPoints() * bonus;
-                        gameState.adicionarPontos(player.getUsername(), pontos);
-                        System.out.println("💰 Pontos para " + player.getUsername() + ": " + pontos);
-                    }
+                    System.out.println("💰 Pontos atribuídos à " + this.nomeEquipa + ": " + pontosFinais);
                 }
             }
         }
     }
 
     public void send(Mensagem msg) {
-        try {
-            out.writeObject(msg);
-            out.flush();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        try { out.writeObject(msg); out.flush(); } catch (IOException e) {}
     }
 }

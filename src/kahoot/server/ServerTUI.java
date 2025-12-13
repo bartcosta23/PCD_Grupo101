@@ -1,67 +1,104 @@
 package kahoot.server;
 
+import kahoot.game.Question;
+import kahoot.game.QuizLoader;
 import kahoot.game.Team;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Scanner;
-import java.util.UUID;
+
+import java.util.*;
 
 public class ServerTUI {
 
     public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
-        Map<String, Team> equipasPorCodigo = new HashMap<>();
+        int contadorJogos = 1; // Para dar nomes sequenciais (JOGO-1, JOGO-2...)
 
-        System.out.println("▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
-        System.out.println("      SERVIDOR KAHOOT - SETUP     ");
-        System.out.println("▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
+        // ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
+        // 1. INICIAR O SERVIDOR CENTRAL (RECEÇÃO)
+        // ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
+        System.out.println("🚀 A iniciar o Servidor Central...");
+        GameServer centralServer = new GameServer();
+        centralServer.start(); // Corre em paralelo numa thread separada
 
-        int numEquipas = 0;
+        // ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
+        // 2. CARREGAR PERGUNTAS (Apenas uma vez)
+        // ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
+        List<Question> perguntasBase = QuizLoader.load("src/quizzes.json");
+        if (perguntasBase == null || perguntasBase.isEmpty()) {
+            System.out.println("❌ Erro: Não foi possível carregar 'quizzes.json'. A sair.");
+            System.exit(1);
+        }
+        System.out.println("✅ Perguntas carregadas: " + perguntasBase.size());
 
-        // 🔥 FIXO: O enunciado obriga a ser 2
-        int jogadoresPorEquipa = 2;
+        // ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
+        // 3. MENU DE GESTÃO
+        // ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
+        while (true) {
+            System.out.println("\n▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
+            System.out.println("   GESTOR DE JOGOS KAHOOT (MULTI) ");
+            System.out.println("▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
+            System.out.println("1. ➕ Criar Novo Jogo (Sala)");
+            System.out.println("2. ❌ Sair do Servidor");
+            System.out.print("👉 Opção: ");
 
-        try {
-            System.out.print("🔢 Quantas equipas vão jogar? ");
-            numEquipas = Integer.parseInt(scanner.nextLine());
+            String opcao = scanner.nextLine();
 
-            if (numEquipas < 1) {
-                System.out.println("❌ Tem de haver pelo menos 1 equipa.");
+            if (opcao.equals("2")) {
+                System.out.println("👋 A encerrar servidor...");
+                centralServer.stopServer(); // Opcional, se implementaste o método stop
                 System.exit(0);
             }
 
+            if (opcao.equals("1")) {
+                criarNovoJogo(scanner, contadorJogos, perguntasBase);
+                contadorJogos++;
+            }
+        }
+    }
+
+    private static void criarNovoJogo(Scanner scanner, int id, List<Question> perguntas) {
+        System.out.println("\n--- 🛠️ CONFIGURAR JOGO " + id + " ---");
+
+        int numEquipas = 0;
+        try {
+            System.out.print("🔢 Quantas equipas vão jogar? ");
+            numEquipas = Integer.parseInt(scanner.nextLine());
         } catch (NumberFormatException e) {
             System.out.println("❌ Número inválido.");
-            System.exit(0);
+            return;
         }
 
-        System.out.println("\n--- A criar " + numEquipas + " equipas de 2 jogadores ---\n");
+        Map<String, Team> equipasDesteJogo = new HashMap<>();
 
         for (int i = 1; i <= numEquipas; i++) {
             System.out.print("📛 Nome da Equipa " + i + ": ");
-            String nomeEquipa = scanner.nextLine();
-            if (nomeEquipa.isBlank()) nomeEquipa = "Equipa " + i;
+            String nome = scanner.nextLine();
+            if (nome.isBlank()) nome = "Equipa " + i;
 
+            // Gera código aleatório de 4 caracteres
             String codigo = UUID.randomUUID().toString().substring(0, 4).toUpperCase();
 
-            // Voltar ao construtor simples
-            Team novaEquipa = new Team(nomeEquipa);
-            equipasPorCodigo.put(codigo, novaEquipa);
+            Team t = new Team(nome);
+            equipasDesteJogo.put(codigo, t);
 
-            System.out.println("✅ Equipa criada! [" + nomeEquipa + "] -> CÓDIGO: " + codigo);
+            System.out.println("   ✅ Criada: [" + nome + "] -> CÓDIGO: " + codigo);
         }
 
-        System.out.println("\n📋 --- TABELA DE CÓDIGOS ---");
-        for (Map.Entry<String, Team> entry : equipasPorCodigo.entrySet()) {
-            System.out.println("🔑 Código: " + entry.getKey() + "  ➡  " + entry.getValue().getNome());
+        // Criar o identificador do jogo
+        String idJogo = "JOGO-" + id;
+
+        // 1. Criar a Sala (GameRoom)
+        // Passamos uma cópia das perguntas para garantir independência
+        GameRoom novaSala = new GameRoom(idJogo, equipasDesteJogo, new ArrayList<>(perguntas));
+
+        // 2. Registar a Sala na Receção (GameServer)
+        // Isto diz ao servidor central: "Quem vier com o código X, manda para a sala JOGO-Y"
+        GameServer.registarNovoJogo(novaSala, equipasDesteJogo);
+
+        System.out.println("\n✨ JOGO CRIADO COM SUCESSO!");
+        System.out.println("📋 Partilha estes códigos com os jogadores:");
+        for (var entry : equipasDesteJogo.entrySet()) {
+            System.out.println("   🔑 Código: " + entry.getKey() + "  ➡  " + entry.getValue().getNome());
         }
-        System.out.println("---------------------------------------------------");
-
-        int totalEsperado = numEquipas * 2;
-        System.out.println("ℹ️  O jogo começará quando " + totalEsperado + " jogadores entrarem.");
-        System.out.println("🚀 A iniciar servidor...");
-
-        // Removemos o argumento extra, o servidor já sabe que são 2
-        new GameServer(equipasPorCodigo).startServer();
+        System.out.println("----------------------------------------------");
     }
 }

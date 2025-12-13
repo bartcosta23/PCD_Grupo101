@@ -1,100 +1,81 @@
 package kahoot.server;
 
-import kahoot.game.*;
-import kahoot.messages.Mensagem;
-import kahoot.Concorrencia.TeamBarrier;
-
+import kahoot.game.Team;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
-public class GameServer {
+/**
+ * SERVIDOR CENTRAL (RECEÇÃO)
+ * - Responsável por aceitar conexões TCP na porta 12345.
+ * - Não gere o jogo (isso é feito pela GameRoom).
+ * - Encaminha o jogador para a sala correta com base no código da equipa.
+ */
+public class GameServer extends Thread {
 
-    private final List<GameHandler> clients = new ArrayList<>();
-    private GameState gameState;
-    private final Map<String, Team> mapCodigos;
+    // MAPA MESTRE: Associa o Código da Equipa (ex: "A1B2") à Sala do Jogo (ex: JOGO-1)
+    // Usamos ConcurrentHashMap porque vários clientes e a TUI acedem a isto ao mesmo tempo.
+    private static final Map<String, GameRoom> mapaCodigoParaSala = new ConcurrentHashMap<>();
 
-    // 🔥 BARREIRA DO LOBBY: Espera que todos entrem antes de começar
-    private TeamBarrier lobbyBarrier;
+    private boolean running = true;
+    private static final int PORT = 12345;
 
-    // Variáveis de Configuração
-    private final int totalJogadoresEsperados;
+    @Override
+    public void run() {
+        try (ServerSocket serverSocket = new ServerSocket(PORT)) {
+            System.out.println("🟦 SERVIDOR CENTRAL (RECEÇÃO) À ESCUTA NA PORTA " + PORT + "...");
+            System.out.println("🌍 Pronto para receber conexões de múltiplos jogos simultâneos.");
 
-    public GameServer(Map<String, Team> mapCodigos) {
-        this.mapCodigos = mapCodigos;
-
-        // 🔥 CUMPRIMENTO DO ENUNCIADO: Equipas de 2 jogadores.
-        // O jogo só começa quando as cadeiras estiverem todas cheias.
-        // Ex: 3 Equipas * 2 Jogadores = Espera por 6 conexões.
-        this.totalJogadoresEsperados = mapCodigos.size() * 2;
-    }
-
-    public void startServer() {
-        try (ServerSocket serverSocket = new ServerSocket(12345)) {
-
-            System.out.println("🟦 Servidor à escuta na porta 12345...");
-
-            // 1. Carregar Perguntas e Criar Estado do Jogo
-            List<Question> perguntas = QuizLoader.load("src/quizzes.json");
-            gameState = new GameState(perguntas);
-
-            // 2. Configurar a Barreira do Lobby
-            // Timeout de 5 minutos (300000ms) para todos fazerem login.
-            // Quando a barreira quebrar (todos chegaram), arranca o GameLoop.
-            this.lobbyBarrier = new TeamBarrier(totalJogadoresEsperados, 300000, () -> {
-                System.out.println("🏁 LOBBY FECHADO! Todos os " + totalJogadoresEsperados + " jogadores entraram.");
-                System.out.println("🎮 A iniciar GameLoop...");
-                new GameLoop(this, gameState).start();
-            });
-
-            System.out.println("⏳ À espera de " + totalJogadoresEsperados + " jogadores no total (Timeout: 5m)...");
-
-            // 3. Loop de aceitação de clientes
-            while (true) {
+            while (running) {
+                // 1. Aceitar conexão TCP
                 Socket socket = serverSocket.accept();
 
-                // Passamos a lobbyBarrier para o Handler.
-                // O Handler vai ficar bloqueado no "await()" desta barreira até entrarem todos.
-                GameHandler handler = new GameHandler(socket, this, gameState, lobbyBarrier);
-
-                synchronized (this) {
-                    clients.add(handler);
-                }
-
-                handler.start();
+                // 2. Criar um Handler "Virgem"
+                // Passamos 'this' (o servidor) para que o Handler possa chamar o método descobrirSala()
+                // Nota: Não adicionamos a nenhuma lista aqui. O Handler vai registar-se na GameRoom depois.
+                new GameHandler(socket, this).start();
             }
 
         } catch (IOException e) {
+            System.err.println("❌ Erro no Servidor Central: " + e.getMessage());
             e.printStackTrace();
         }
     }
 
-    // --- MÉTODOS DE GESTÃO DE CLIENTES ---
+    // ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
+    //              MÉTODOS DE GESTÃO (Chamados pela TUI)
+    // ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
 
-    public synchronized void removeClient(GameHandler handler) {
-        clients.remove(handler);
-        System.out.println("🗑️ Cliente removido da lista. Total ativos: " + clients.size());
-    }
-
-    public synchronized List<GameHandler> getClients() {
-        return new ArrayList<>(clients); // Retorna cópia para evitar erros de concorrência
-    }
-
-    public Team getTeamByCode(String code) {
-        return mapCodigos.get(code);
-    }
-
-    public synchronized void broadcast(Mensagem msg) {
-        for (GameHandler handler : clients) {
-            handler.send(msg);
+    /**
+     * Regista um novo jogo no sistema.
+     * Associa todos os códigos das equipas desse jogo à respetiva sala.
+     */
+    public static void registarNovoJogo(GameRoom sala, Map<String, Team> equipas) {
+        for (String codigo : equipas.keySet()) {
+            mapaCodigoParaSala.put(codigo, sala);
         }
+        System.out.println("✅ Jogo [" + sala.getId() + "] registado com sucesso.");
+        System.out.println("   ➡ Códigos ativos para esta sala: " + equipas.keySet());
     }
 
-    // Método necessário para o GameLoop criar as barreiras das equipas
-    public synchronized List<Team> getTeams() {
-        return new ArrayList<>(mapCodigos.values());
+    // ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
+    //            MÉTODOS DE LOGÍSTICA (Chamados pelo Handler)
+    // ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
+
+    /**
+     * O Handler chama este método quando o cliente envia o código de equipa.
+     * Retorna a Sala onde esse jogo está a decorrer.
+     */
+    public GameRoom descobrirSala(String codigoEquipa) {
+        return mapaCodigoParaSala.get(codigoEquipa);
+    }
+
+    /**
+     * Permite parar o servidor graciosamente (opcional).
+     */
+    public void stopServer() {
+        this.running = false;
     }
 }
