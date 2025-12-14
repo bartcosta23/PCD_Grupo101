@@ -15,7 +15,6 @@ public class ThreadPool {
         this.queue = new LinkedList<>();
         this.threads = new PoolWorker[nThreads];
 
-        // Criar e arrancar os trabalhadores (eles ficam logo à espera de trabalho)
         for (int i = 0; i < nThreads; i++) {
             threads[i] = new PoolWorker();
             threads[i].start();
@@ -26,8 +25,8 @@ public class ThreadPool {
     public void execute(Runnable task) {
         synchronized (queue) {
             if (isRunning) {
-                queue.addLast(task); // Adiciona à fila
-                queue.notify();      // Acorda UM trabalhador que esteja a dormir
+                queue.addLast(task);
+                queue.notify();
             }
         }
     }
@@ -35,40 +34,33 @@ public class ThreadPool {
     public void shutdown() {
         isRunning = false;
         synchronized (queue) {
-            queue.notifyAll(); // Acorda todos para eles poderem sair do loop e morrer
+            queue.notifyAll();
         }
     }
 
-    // Classe interna que define o comportamento do Trabalhador
     private class PoolWorker extends Thread {
         @Override
         public void run() {
             Runnable task;
 
             while (isRunning) {
-                // 1. Tentar arranjar trabalho
                 synchronized (queue) {
-                    // Enquanto não houver trabalho, dorme
                     while (queue.isEmpty() && isRunning) {
                         try {
                             queue.wait();
                         } catch (InterruptedException e) {
-                            // Se for interrompido, verifica se deve terminar
                         }
                     }
 
-                    // Se o servidor estiver a fechar e não houver tarefas, sai
                     if (!isRunning && queue.isEmpty()) {
                         return;
                     }
 
-                    // Pega na primeira tarefa da fila
                     task = queue.removeFirst();
                 }
 
-                // 2. Executar o trabalho (fora do bloco synchronized para não bloquear a fila)
                 try {
-                    task.run(); // Executa o GameLoop nesta thread
+                    task.run();
                 } catch (RuntimeException e) {
                     System.err.println("Erro na execução da tarefa: " + e.getMessage());
                 }

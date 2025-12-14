@@ -17,10 +17,9 @@ public class ServerTUI {
 
         System.out.println(" A iniciar o Servidor Central...");
         GameServer centralServer = new GameServer();
-        centralServer.start(); // Corre em paralelo numa thread separada
+        centralServer.start();
 
 
-        // CARREGAR PERGUNTAS (Apenas uma vez)
 
         List<Question> perguntasBase = QuizLoader.load("src/quizzes.json");
         if (perguntasBase == null || perguntasBase.isEmpty()) {
@@ -30,7 +29,6 @@ public class ServerTUI {
         System.out.println(" Perguntas carregadas: " + perguntasBase.size());
 
 
-        //  MENU DE GESTÃO
 
         while (true) {
 
@@ -74,7 +72,7 @@ public class ServerTUI {
             String nome = scanner.nextLine();
             if (nome.isBlank()) nome = "Equipa " + i;
 
-            // Gera código aleatório de 4 caracteres
+            // vai gerar código aleatório de 4 caracteres
             String codigo = UUID.randomUUID().toString().substring(0, 4).toUpperCase();
 
             Team t = new Team(nome);
@@ -83,15 +81,12 @@ public class ServerTUI {
             System.out.println("    Criada: [" + nome + "] -> CÓDIGO: " + codigo);
         }
 
-        // Criar o identificador do jogo
         String idJogo = "JOGO-" + id;
 
-        //  Criar a Sala (GameRoom)
-        // Passamos uma cópia das perguntas para garantir independência
+
         GameRoom novaSala = new GameRoom(idJogo, equipasDesteJogo, new ArrayList<>(perguntas));
 
-        //  Registar a Sala na Receção (GameServer)
-        // Isto diz ao servidor central: "Quem vier com o código X, manda para a sala JOGO-Y"
+
         GameServer.registarNovoJogo(novaSala, equipasDesteJogo);
 
         System.out.println("\n JOGO CRIADO COM SUCESSO!");

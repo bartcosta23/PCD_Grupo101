@@ -13,7 +13,7 @@ public class Client {
     private ObjectOutputStream out;
     private ObjectInputStream in;
 
-    private ServerHandler handler; // Certifica-te que tens esta classe ou usa a thread local
+    private ServerHandler handler;
 
     private String nomeJogador;
 
@@ -28,19 +28,14 @@ public class Client {
             out = new ObjectOutputStream(socket.getOutputStream());
             in = new ObjectInputStream(socket.getInputStream());
 
-            // Arranca thread que escuta o servidor (Supondo que tens esta classe ServerHandler)
-            // Se não tiveres ServerHandler, terás de criar uma thread aqui como no MainGuiDemo
+
             if (handler == null) {
-                // handler = new ServerHandler(in, this);
-                // handler.start();
-                // COMENTEI EM CIMA PORQUE NÃO SEI SE TENS A CLASSE ServerHandler FEITA.
-                // Se não tiveres, usa a lógica de thread do MainGuiDemo.
+
             }
 
             System.out.println(" Ligado ao servidor!");
 
-            // --- CORREÇÃO 1: Enviar LOGIN corretamente ---
-            // O servidor espera um array String[] {user, team}
+
             String[] dadosLogin = {nomeJogador, "SemEquipa"};
             enviarMensagem(new Mensagem(MessagesEnum.LOGIN, dadosLogin));
 
@@ -61,9 +56,7 @@ public class Client {
         }
     }
 
-    // Callback quando o servidor envia algo
     public void receberMensagem(Mensagem msg) {
-        // --- CORREÇÃO 2: Usar getContent() e não getTexto() ---
         System.out.println(" Recebido do servidor: " + msg.getType() + " -> " + msg.getContent());
     }
 

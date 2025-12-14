@@ -112,8 +112,7 @@ public class GameHandler extends Thread {
 
             if (currentLatch != null) {
                 if (isTeamMode) {
-                    // Modo Equipa: 1 ponto fixo
-                    currentLatch.countdown(); // (minúsculo, corrigido)
+                    currentLatch.countdown();
                     pontosFinais = pontosBase;
                 } else {
                     // Modo Individual: Bónus de rapidez
@@ -122,8 +121,7 @@ public class GameHandler extends Thread {
                 }
 
                 if (pontosFinais > 0) {
-                    // Adiciona pontos à EQUIPA, não ao jogador!
-                    // Como o GameState usa um Map, ele vai somar automaticamente se a chave for igual.
+
                     gameState.adicionarPontos(this.nomeEquipa, pontosFinais);
 
                     System.out.println(" Pontos atribuídos à " + this.nomeEquipa + ": " + pontosFinais);

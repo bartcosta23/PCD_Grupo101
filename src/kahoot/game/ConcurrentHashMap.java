@@ -7,7 +7,6 @@ import java.util.Set;
 
 public class ConcurrentHashMap<K, V> {
 
-    // O mapa real que guarda os dados (não é seguro por si só)
     private final Map<K, V> map;
 
     public ConcurrentHashMap() {

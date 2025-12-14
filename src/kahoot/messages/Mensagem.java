@@ -6,8 +6,8 @@ public class Mensagem implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    private final MessagesEnum type;  // O Enum (LOGIN, ANSWER, etc.)
-    private final Object content; // O conteúdo (String[], Integer, etc.)
+    private final MessagesEnum type;
+    private final Object content;
 
     // Construtor
     public Mensagem(MessagesEnum type, Object content) {

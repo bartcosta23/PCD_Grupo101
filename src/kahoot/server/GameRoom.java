@@ -27,20 +27,17 @@ public class GameRoom {
         this.gameState = new GameState(perguntas);
 
 
-        // Se tens 2 equipas, queres 4 jogadores (2 por equipa).
-        // Antes estava apenas "equipas.size()", o que deixava o jogo começar meio vazio.
+
         int totalJogadores = equipas.size() * 2;
 
         this.lobbyBarrier = new TeamBarrier(totalJogadores, 300000, () -> {
             System.out.println(" [" + idJogo + "] Sala cheia! A iniciar GameLoop...");
             this.jogoIniciado = true;
 
-            // Passamos 'this' (A Sala) em vez do Server
             GameServer.iniciarJogo(new GameLoop(this, gameState));
         });
     }
 
-    // ... (Resto do código igual: adicionarJogador, getters, broadcast, etc.) ...
 
     public void adicionarJogador(GameHandler handler) {
         jogadoresConectados.add(handler);

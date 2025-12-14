@@ -23,7 +23,6 @@ public class Gui extends JFrame {
         setLayout(new BorderLayout(10, 10));
         getRootPane().setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5)); // Margem
 
-        //  PAINEL DE TOPO (Pontos - MODO - Timer)
         JPanel painelTopo = new JPanel(new BorderLayout(10, 0));
 
         labelPontuacao = new JLabel("Pontuação: 0");
@@ -33,7 +32,6 @@ public class Gui extends JFrame {
         labelTimer.setFont(new Font("Arial", Font.BOLD, 16));
         labelTimer.setHorizontalAlignment(SwingConstants.RIGHT);
 
-        //  O Label do Centro (Modo de Jogo)
         labelModo = new JLabel("A aguardar...", SwingConstants.CENTER);
         labelModo.setFont(new Font("Arial", Font.BOLD, 18));
         labelModo.setForeground(Color.BLUE);
@@ -44,25 +42,21 @@ public class Gui extends JFrame {
 
         add(painelTopo, BorderLayout.NORTH);
 
-        //  PAINEL CENTRAL (Pergunta)
         areaPergunta = new JTextArea("A pergunta aparecerá aqui...");
         areaPergunta.setFont(new Font("Arial", Font.PLAIN, 18));
         areaPergunta.setEditable(false);
         areaPergunta.setLineWrap(true);
         areaPergunta.setWrapStyleWord(true);
-        // Margem interna para o texto não colar à borda
         areaPergunta.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
         add(new JScrollPane(areaPergunta), BorderLayout.CENTER);
 
-        //  PAINEL SUL (Botões)
         JPanel painelBotoes = new JPanel(new GridLayout(2, 2, 10, 10));
         botaoOpcaoA = new JButton("Opção A");
         botaoOpcaoB = new JButton("Opção B");
         botaoOpcaoC = new JButton("Opção C");
         botaoOpcaoD = new JButton("Opção D");
 
-        // Fonte maior para os botões
         Font fontBotoes = new Font("Arial", Font.BOLD, 14);
         botaoOpcaoA.setFont(fontBotoes);
         botaoOpcaoB.setFont(fontBotoes);
@@ -75,7 +69,6 @@ public class Gui extends JFrame {
         painelBotoes.add(botaoOpcaoD);
         add(painelBotoes, BorderLayout.SOUTH);
 
-        //  PAINEL ESTE (Leaderboard + Logs)
         areaClassificacao = new JTextArea("Classificação:\n");
         areaClassificacao.setEditable(false);
         areaClassificacao.setBackground(new Color(245, 245, 245));
@@ -97,7 +90,6 @@ public class Gui extends JFrame {
 
         add(splitLeste, BorderLayout.EAST);
 
-        // Configurações da Janela
         setSize(900, 600);
         setMinimumSize(new Dimension(700, 420));
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -105,9 +97,7 @@ public class Gui extends JFrame {
     }
 
 
-    // MÉTODOS PÚBLICOS (Usados pelo MainGuiDemo)
 
-    //  Método crucial para mudar o texto do topo
     public void atualizarModo(String texto, Color cor) {
         SwingUtilities.invokeLater(() -> {
             labelModo.setText(texto);
@@ -169,7 +159,6 @@ public class Gui extends JFrame {
         SwingUtilities.invokeLater(() -> new Gui().setVisible(true));
     }
 
-    // Em Gui.java
 
     public void mostrarPopupFimDeJogo(Map<String, Integer> placar) {
         SwingUtilities.invokeLater(() -> {
@@ -186,7 +175,6 @@ public class Gui extends JFrame {
 
             JOptionPane.showMessageDialog(this, sb.toString(), "Resultados Finais", JOptionPane.INFORMATION_MESSAGE);
 
-            //  SÓ AGORA É QUE FECHAMOS A JANELA
             System.exit(0);
         });
     }

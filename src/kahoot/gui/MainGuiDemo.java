@@ -31,19 +31,16 @@ public class MainGuiDemo {
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
 
-            // 1. Pedir Login
             String username = JOptionPane.showInputDialog(null, " Nome de Jogador:", "Login", JOptionPane.QUESTION_MESSAGE);
             if (username == null || username.isBlank()) System.exit(0);
 
             String codigoEquipa = JOptionPane.showInputDialog(null, " Código da Equipa:", "Login", JOptionPane.QUESTION_MESSAGE);
             if (codigoEquipa == null || codigoEquipa.isBlank()) System.exit(0);
 
-            // 2. Conectar
             if (!conectarAoServidor(username, codigoEquipa.trim().toUpperCase())) {
                 return;
             }
 
-            // 3. Iniciar GUI
             gui = new Gui();
             gui.setVisible(true);
             gui.log(" Ligado! Equipa: " + codigoEquipa);
@@ -54,7 +51,6 @@ public class MainGuiDemo {
             };
             configurarBotoes();
 
-            // 4. Thread para ouvir mensagens
             new Thread(MainGuiDemo::ouvirServidor).start();
         });
     }
@@ -117,7 +113,6 @@ public class MainGuiDemo {
         switch (msg.getType()) {
             case QUESTION -> {
 
-                //  VOLTÁMOS A LER O ARRAY [Question, Boolean]
                 Object[] dados = (Object[]) msg.getContent();
                 Question q = (Question) dados[0];
                 boolean isTeamMode = (boolean) dados[1];
@@ -153,7 +148,6 @@ public class MainGuiDemo {
             b.setOpaque(true);
         }
 
-        //  ATUALIZA O MODO NO TOPO DA GUI
         if (isTeamMode) {
             try { gui.atualizarModo("MODO EQUIPA", Color.BLUE); } catch (Exception e) {}
         } else {

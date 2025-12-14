@@ -25,7 +25,7 @@ public class GameLoop extends Thread {
         System.out.println(" GameLoop iniciado na sala: " + gameRoom.getId());
         esperar(2000);
 
-        int numeroRonda = 1; // Contador para alternar modos
+        int numeroRonda = 1;
 
         while (true) {
             if (!gameState.temPerguntaAtual()) break;
@@ -33,27 +33,24 @@ public class GameLoop extends Thread {
             Question q = gameState.getPerguntaAtual();
 
 
-            // Se a ronda for ÍMPAR (1, 3, 5) -> isTeamMode = true (Modo Equipa)
-            // Se a ronda for PAR (2, 4, 6)   -> isTeamMode = false (Modo Individual/Rápido)
+            // se a ronda for ÍMPAR -> isTeamMode = true (Modo Equipa)
+            // se a ronda for PAR -> isTeamMode = false (Modo Individual/Rápido)
             boolean isTeamMode = (numeroRonda % 2 != 0);
 
             System.out.println(" [" + gameRoom.getId() + "] Pergunta " + numeroRonda + " (" + (isTeamMode ? "Equipa" : "Individual") + "): " + q.getText());
 
-            // Envia Pergunta + Modo para a GUI atualizar as cores
             gameRoom.broadcast(new Mensagem(MessagesEnum.QUESTION, new Object[]{q, isTeamMode}));
 
             try {
                 int total = clientes.size();
                 int bonus = Math.min(3, total);
 
-                // Latch configurado (15 segundos)
                 CountDownLatch latch = new CountDownLatch(2, bonus, 15000, total);
 
                 synchronized (clientes) {
                     for (GameHandler handler : clientes) {
                         handler.setLatch(latch);
-                        // avisar o handler do modo atual
-                        // Isto é importante para ele saber se dá bónus de rapidez ou não
+
                         handler.setTeamMode(isTeamMode);
                     }
                 }
@@ -66,7 +63,7 @@ public class GameLoop extends Thread {
 
             if (!gameState.proximaPergunta()) break;
 
-            numeroRonda++; // Avança para a próxima ronda
+            numeroRonda++;
         }
 
         System.out.println(" Jogo Terminado na sala " + gameRoom.getId());

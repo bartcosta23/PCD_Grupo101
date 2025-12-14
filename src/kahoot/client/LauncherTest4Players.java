@@ -18,7 +18,6 @@ public class LauncherTest4Players {
         for (int i = 0; i < NUM_CLIENTES; i++) {
             iniciarNovoCliente();
             try {
-                // Pequena pausa para as janelas não abrirem todas ao mm tempo em cima das outras
                 Thread.sleep(500);
             } catch (InterruptedException e) {
                 e.printStackTrace();
@@ -44,7 +43,6 @@ public class LauncherTest4Players {
             command.add(classpath);
             command.add(className);
 
-            // 5. Lançar o processo
             ProcessBuilder builder = new ProcessBuilder(command);
             builder.start();
 

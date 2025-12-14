@@ -7,7 +7,7 @@ public class Player implements Serializable {
 
     private final String username;
     private int score;
-    private Team team; // Referência para a equipa (pode ser null se for jogo individual)
+    private Team team;
     private int lastAnswer = -1;
 
 
@@ -45,10 +45,7 @@ public class Player implements Serializable {
         return team != null;
     }
 
-    // --- MÉTODOS DE PONTUAÇÃO (Sincronizados) ---
-    // Estes métodos precisam de ser synchronized porque:
-    // 1. O GameHandler escreve (quando o jogador acerta).
-    // 2. O GameState lê (quando envia o placar no fim da ronda).
+
 
     public synchronized void addScore(int points) {
         this.score += points;
@@ -62,7 +59,7 @@ public class Player implements Serializable {
         this.score = 0;
     }
 
-    //  IDENTIDADE (Importante para Listas e Maps)
+    //  IDENTIDADE
 
     @Override
     public boolean equals(Object o) {
