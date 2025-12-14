@@ -20,7 +20,7 @@ public class GameServer extends Thread {
     // Usamos ConcurrentHashMap porque vários clientes e a TUI acedem a isto ao mesmo tempo.
     private static final Map<String, GameRoom> mapaCodigoParaSala = new ConcurrentHashMap<>();
 
-    private static final ThreadPool poolDeJogos = new ThreadPool(5); //apenas p teste ; valor real: 5
+    private static final ThreadPool poolDeJogos = new ThreadPool(5);
 
     private boolean running = true;
     private static final int PORT = 12345;
@@ -28,8 +28,8 @@ public class GameServer extends Thread {
     @Override
     public void run() {
         try (ServerSocket serverSocket = new ServerSocket(PORT)) {
-            System.out.println("🟦 SERVIDOR CENTRAL (RECEÇÃO) À ESCUTA NA PORTA " + PORT + "...");
-            System.out.println("🌍 Pronto para receber conexões de múltiplos jogos simultâneos.");
+            System.out.println(" SERVIDOR CENTRAL (RECEÇÃO) À ESCUTA NA PORTA " + PORT + "...");
+            System.out.println(" Pronto para receber conexões de múltiplos jogos simultâneos.");
 
             while (running) {
                 // 1. Aceitar conexão TCP
@@ -42,14 +42,14 @@ public class GameServer extends Thread {
             }
 
         } catch (IOException e) {
-            System.err.println("❌ Erro no Servidor Central: " + e.getMessage());
+            System.err.println(" Erro no Servidor Central: " + e.getMessage());
             e.printStackTrace();
         }
     }
 
-    // ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
-    //              MÉTODOS DE GESTÃO (Chamados pela TUI)
-    // ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
+
+
+    //MÉTODOS DE GESTÃO (Chamados pela TUI)
 
     /**
      * Regista um novo jogo no sistema.
@@ -59,18 +59,17 @@ public class GameServer extends Thread {
         for (String codigo : equipas.keySet()) {
             mapaCodigoParaSala.put(codigo, sala);
         }
-        System.out.println("✅ Jogo [" + sala.getId() + "] registado com sucesso.");
+        System.out.println(" Jogo [" + sala.getId() + "] registado com sucesso.");
         System.out.println("   ➡ Códigos ativos para esta sala: " + equipas.keySet());
     }
 
     public static void iniciarJogo(Runnable gameLoop) {
-        System.out.println("🎱 Jogo submetido à ThreadPool Global.");
+        System.out.println(" Jogo submetido à ThreadPool Global.");
         poolDeJogos.execute(gameLoop);
     }
 
-    // ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
-    //            MÉTODOS DE LOGÍSTICA (Chamados pelo Handler)
-    // ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
+
+    //MÉTODOS DE LOGÍSTICA (Chamados pelo Handler)
 
     /**
      * O Handler chama este método quando o cliente envia o código de equipa.

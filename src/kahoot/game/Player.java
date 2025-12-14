@@ -25,13 +25,13 @@ public class Player implements Serializable {
         return lastAnswer;
     }
 
-    // --- MÉTODOS DE DADOS (Imutáveis ou Simples) ---
+    //MÉTODOS DE DADOS
 
     public String getUsername() {
         return username;
     }
 
-    // --- MÉTODOS DE EQUIPA ---
+    //MÉTODOS DE EQUIPA
 
     public void setTeam(Team team) {
         this.team = team;
@@ -62,7 +62,7 @@ public class Player implements Serializable {
         this.score = 0;
     }
 
-    // --- IDENTIDADE (Importante para Listas e Maps) ---
+    //  IDENTIDADE (Importante para Listas e Maps)
 
     @Override
     public boolean equals(Object o) {

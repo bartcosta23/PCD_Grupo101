@@ -7,7 +7,7 @@ import java.util.Map;
 public class Gui extends JFrame {
 
     private final JLabel labelPontuacao;
-    private final JLabel labelModo; // 🔥 NOVO: Onde vai aparecer "EQUIPA" ou "INDIVIDUAL"
+    private final JLabel labelModo;
     private final JLabel labelTimer;
     private final JTextArea areaPergunta;
     private final JButton botaoOpcaoA;
@@ -23,7 +23,7 @@ public class Gui extends JFrame {
         setLayout(new BorderLayout(10, 10));
         getRootPane().setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5)); // Margem
 
-        // --- PAINEL DE TOPO (Pontos - MODO - Timer) ---
+        //  PAINEL DE TOPO (Pontos - MODO - Timer)
         JPanel painelTopo = new JPanel(new BorderLayout(10, 0));
 
         labelPontuacao = new JLabel("Pontuação: 0");
@@ -33,7 +33,7 @@ public class Gui extends JFrame {
         labelTimer.setFont(new Font("Arial", Font.BOLD, 16));
         labelTimer.setHorizontalAlignment(SwingConstants.RIGHT);
 
-        // 🔥 O Label do Centro (Modo de Jogo)
+        //  O Label do Centro (Modo de Jogo)
         labelModo = new JLabel("A aguardar...", SwingConstants.CENTER);
         labelModo.setFont(new Font("Arial", Font.BOLD, 18));
         labelModo.setForeground(Color.BLUE);
@@ -44,7 +44,7 @@ public class Gui extends JFrame {
 
         add(painelTopo, BorderLayout.NORTH);
 
-        // --- PAINEL CENTRAL (Pergunta) ---
+        //  PAINEL CENTRAL (Pergunta)
         areaPergunta = new JTextArea("A pergunta aparecerá aqui...");
         areaPergunta.setFont(new Font("Arial", Font.PLAIN, 18));
         areaPergunta.setEditable(false);
@@ -55,7 +55,7 @@ public class Gui extends JFrame {
 
         add(new JScrollPane(areaPergunta), BorderLayout.CENTER);
 
-        // --- PAINEL SUL (Botões) ---
+        //  PAINEL SUL (Botões)
         JPanel painelBotoes = new JPanel(new GridLayout(2, 2, 10, 10));
         botaoOpcaoA = new JButton("Opção A");
         botaoOpcaoB = new JButton("Opção B");
@@ -75,7 +75,7 @@ public class Gui extends JFrame {
         painelBotoes.add(botaoOpcaoD);
         add(painelBotoes, BorderLayout.SOUTH);
 
-        // --- PAINEL ESTE (Leaderboard + Logs) ---
+        //  PAINEL ESTE (Leaderboard + Logs)
         areaClassificacao = new JTextArea("Classificação:\n");
         areaClassificacao.setEditable(false);
         areaClassificacao.setBackground(new Color(245, 245, 245));
@@ -104,11 +104,10 @@ public class Gui extends JFrame {
         setLocationRelativeTo(null);
     }
 
-    // ============================================
-    // MÉTODOS PÚBLICOS (Usados pelo MainGuiDemo)
-    // ============================================
 
-    // 🔥 Método crucial para mudar o texto do topo
+    // MÉTODOS PÚBLICOS (Usados pelo MainGuiDemo)
+
+    //  Método crucial para mudar o texto do topo
     public void atualizarModo(String texto, Color cor) {
         SwingUtilities.invokeLater(() -> {
             labelModo.setText(texto);
@@ -135,7 +134,7 @@ public class Gui extends JFrame {
 
     public void atualizarClassificacao(Map<String, Integer> placar) {
         SwingUtilities.invokeLater(() -> {
-            StringBuilder sb = new StringBuilder("🏆 Classificação:\n\n");
+            StringBuilder sb = new StringBuilder(" Classificação:\n\n");
             placar.entrySet().stream()
                     .sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
                     .forEach(entry -> {
@@ -175,19 +174,19 @@ public class Gui extends JFrame {
     public void mostrarPopupFimDeJogo(Map<String, Integer> placar) {
         SwingUtilities.invokeLater(() -> {
             StringBuilder sb = new StringBuilder();
-            sb.append("🏁 FIM DO JOGO! 🏁\n\n");
-            sb.append("🏆 Classificação Final:\n");
+            sb.append(" FIM DO JOGO! \n\n");
+            sb.append(" Classificação Final:\n");
 
             placar.entrySet().stream()
                     .sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
                     .forEach(entry -> {
-                        sb.append(String.format("👉 %s : %d pontos\n", entry.getKey(), entry.getValue()));
+                        sb.append(String.format(" %s : %d pontos\n", entry.getKey(), entry.getValue()));
                     });
 
 
             JOptionPane.showMessageDialog(this, sb.toString(), "Resultados Finais", JOptionPane.INFORMATION_MESSAGE);
 
-            // 🔥 SÓ AGORA É QUE FECHAMOS A JANELA
+            //  SÓ AGORA É QUE FECHAMOS A JANELA
             System.exit(0);
         });
     }

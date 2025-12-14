@@ -5,7 +5,7 @@ public class TeamBarrier {
     private final int totalPlayers;
     private final long timeout;
     private boolean broken = false;
-    private boolean actionExecuted = false; // 🔥 NOVO: Evita iniciar o jogo várias vezes
+    private boolean actionExecuted = false; // Evita iniciar o jogo várias vezes
     private final Runnable barrierAction;
 
     public TeamBarrier(int totalPlayers, long timeout, Runnable barrierAction) {
@@ -43,7 +43,7 @@ public class TeamBarrier {
         }
     }
 
-    // 🔥 Garante que o GameLoop só arranca uma vez
+    //Garante que o GameLoop só arranca uma vez
     private void runActionOnce() {
         if (!actionExecuted && barrierAction != null) {
             actionExecuted = true;

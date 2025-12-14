@@ -13,21 +13,21 @@ public class GameState {
     private final List<Question> perguntas;
     private int indiceAtual;
 
-    // Usando a TUA classe ConcurrentHashMap
+    // Usando a classe ConcurrentHashMap
     private final ConcurrentHashMap<String, Integer> pontuacoes;
 
     public GameState(List<Question> perguntas) {
-        // 1. Criar cópia e baralhar para garantir a aleatoriedade
+        //Criar cópia e baralhar para garantir a aleatoriedade
         this.perguntas = new ArrayList<>(perguntas);
         Collections.shuffle(this.perguntas);
 
         this.indiceAtual = 0;
 
-        // 2. Inicializar a tua estrutura de dados
+        //Inicializar a tua estrutura de dados
         this.pontuacoes = new ConcurrentHashMap<>();
     }
 
-    // --- LÓGICA DE JOGO (INDIVIDUAL VS EQUIPA) ---
+    //LÓGICA DE JOGO (INDIVIDUAL VS EQUIPA)
 
     /**
      * Define se a ronda atual é de Equipa ou Individual.

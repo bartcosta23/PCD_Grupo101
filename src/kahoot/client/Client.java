@@ -37,7 +37,7 @@ public class Client {
                 // Se não tiveres, usa a lógica de thread do MainGuiDemo.
             }
 
-            System.out.println("🟢 Ligado ao servidor!");
+            System.out.println(" Ligado ao servidor!");
 
             // --- CORREÇÃO 1: Enviar LOGIN corretamente ---
             // O servidor espera um array String[] {user, team}
@@ -47,7 +47,7 @@ public class Client {
             return true;
 
         } catch (Exception e) {
-            System.err.println("❌ Erro ao ligar ao servidor: " + e.getMessage());
+            System.err.println(" Erro ao ligar ao servidor: " + e.getMessage());
             return false;
         }
     }
@@ -64,7 +64,7 @@ public class Client {
     // Callback quando o servidor envia algo
     public void receberMensagem(Mensagem msg) {
         // --- CORREÇÃO 2: Usar getContent() e não getTexto() ---
-        System.out.println("📩 Recebido do servidor: " + msg.getType() + " -> " + msg.getContent());
+        System.out.println(" Recebido do servidor: " + msg.getType() + " -> " + msg.getContent());
     }
 
     public static void main(String[] args) {

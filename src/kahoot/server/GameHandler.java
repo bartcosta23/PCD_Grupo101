@@ -22,7 +22,7 @@ public class GameHandler extends Thread {
     private GameRoom salaAtual;
     private Player player;
 
-    // 🔥 NOVA VARIÁVEL: Para saber a quem dar os pontos
+
     private String nomeEquipa;
 
     private CountDownLatch currentLatch;
@@ -43,7 +43,7 @@ public class GameHandler extends Thread {
 
     @Override
     public void run() {
-        System.out.println("🧵 Handler a correr na thread: " + Thread.currentThread().getName());
+        System.out.println(" Handler a correr na thread: " + Thread.currentThread().getName());
         try {
             if (!isLogged) {
                 Mensagem msgLogin = (Mensagem) in.readObject();
@@ -59,7 +59,7 @@ public class GameHandler extends Thread {
             }
 
             if (salaAtual != null && salaAtual.getLobbyBarrier() != null) {
-                System.out.println("⏳ [" + salaAtual.getId() + "] " + player.getUsername() + " à espera...");
+                System.out.println(" [" + salaAtual.getId() + "] " + player.getUsername() + " à espera...");
                 salaAtual.getLobbyBarrier().await();
             }
 
@@ -70,7 +70,7 @@ public class GameHandler extends Thread {
                 }
             }
         } catch (Exception e) {
-            System.out.println("🔌 Cliente caiu.");
+            System.out.println(" Cliente caiu.");
             if (salaAtual != null) salaAtual.removerJogador(this);
         }
     }
@@ -85,7 +85,7 @@ public class GameHandler extends Thread {
                 this.salaAtual = salaEncontrada;
                 this.player = new Player(username);
 
-                // 🔥 GUARDAR O NOME DA EQUIPA
+                // guardar o nome da equipa
                 Team t = salaAtual.getTeamByCode(codigo);
                 this.nomeEquipa = t.getNome();
 
@@ -122,11 +122,11 @@ public class GameHandler extends Thread {
                 }
 
                 if (pontosFinais > 0) {
-                    // 🔥 CORREÇÃO: Adiciona pontos à EQUIPA, não ao jogador!
+                    // Adiciona pontos à EQUIPA, não ao jogador!
                     // Como o GameState usa um Map, ele vai somar automaticamente se a chave for igual.
                     gameState.adicionarPontos(this.nomeEquipa, pontosFinais);
 
-                    System.out.println("💰 Pontos atribuídos à " + this.nomeEquipa + ": " + pontosFinais);
+                    System.out.println(" Pontos atribuídos à " + this.nomeEquipa + ": " + pontosFinais);
                 }
             }
         }

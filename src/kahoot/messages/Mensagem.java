@@ -15,7 +15,7 @@ public class Mensagem implements Serializable {
         this.content = content;
     }
 
-    // --- ESTES SÃO OS MÉTODOS QUE O JAVA NÃO ESTAVA A ENCONTRAR ---
+
 
     public MessagesEnum getType() {
         return type;

@@ -22,7 +22,7 @@ public class GameLoop extends Thread {
 
     @Override
     public void run() {
-        System.out.println("🎮 GameLoop iniciado na sala: " + gameRoom.getId());
+        System.out.println(" GameLoop iniciado na sala: " + gameRoom.getId());
         esperar(2000);
 
         int numeroRonda = 1; // Contador para alternar modos
@@ -32,12 +32,12 @@ public class GameLoop extends Thread {
 
             Question q = gameState.getPerguntaAtual();
 
-            // 🔥 LÓGICA DE ALTERNÂNCIA
+
             // Se a ronda for ÍMPAR (1, 3, 5) -> isTeamMode = true (Modo Equipa)
             // Se a ronda for PAR (2, 4, 6)   -> isTeamMode = false (Modo Individual/Rápido)
             boolean isTeamMode = (numeroRonda % 2 != 0);
 
-            System.out.println("📤 [" + gameRoom.getId() + "] Pergunta " + numeroRonda + " (" + (isTeamMode ? "Equipa" : "Individual") + "): " + q.getText());
+            System.out.println(" [" + gameRoom.getId() + "] Pergunta " + numeroRonda + " (" + (isTeamMode ? "Equipa" : "Individual") + "): " + q.getText());
 
             // Envia Pergunta + Modo para a GUI atualizar as cores
             gameRoom.broadcast(new Mensagem(MessagesEnum.QUESTION, new Object[]{q, isTeamMode}));
@@ -52,7 +52,7 @@ public class GameLoop extends Thread {
                 synchronized (clientes) {
                     for (GameHandler handler : clientes) {
                         handler.setLatch(latch);
-                        // 🔥 AVISAR O HANDLER DO MODO ATUAL
+                        // avisar o handler do modo atual
                         // Isto é importante para ele saber se dá bónus de rapidez ou não
                         handler.setTeamMode(isTeamMode);
                     }
@@ -69,7 +69,7 @@ public class GameLoop extends Thread {
             numeroRonda++; // Avança para a próxima ronda
         }
 
-        System.out.println("🏆 Jogo Terminado na sala " + gameRoom.getId());
+        System.out.println(" Jogo Terminado na sala " + gameRoom.getId());
         gameRoom.broadcast(new Mensagem(MessagesEnum.GAME_OVER, gameState.getPlacar()));
     }
 

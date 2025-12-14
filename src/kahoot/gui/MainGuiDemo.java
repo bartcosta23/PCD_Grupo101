@@ -32,10 +32,10 @@ public class MainGuiDemo {
         SwingUtilities.invokeLater(() -> {
 
             // 1. Pedir Login
-            String username = JOptionPane.showInputDialog(null, "👤 Nome de Jogador:", "Login", JOptionPane.QUESTION_MESSAGE);
+            String username = JOptionPane.showInputDialog(null, " Nome de Jogador:", "Login", JOptionPane.QUESTION_MESSAGE);
             if (username == null || username.isBlank()) System.exit(0);
 
-            String codigoEquipa = JOptionPane.showInputDialog(null, "🔑 Código da Equipa:", "Login", JOptionPane.QUESTION_MESSAGE);
+            String codigoEquipa = JOptionPane.showInputDialog(null, " Código da Equipa:", "Login", JOptionPane.QUESTION_MESSAGE);
             if (codigoEquipa == null || codigoEquipa.isBlank()) System.exit(0);
 
             // 2. Conectar
@@ -46,7 +46,7 @@ public class MainGuiDemo {
             // 3. Iniciar GUI
             gui = new Gui();
             gui.setVisible(true);
-            gui.log("🔌 Ligado! Equipa: " + codigoEquipa);
+            gui.log(" Ligado! Equipa: " + codigoEquipa);
 
             botoes = new JButton[]{
                     gui.getBotaoOpcaoA(), gui.getBotaoOpcaoB(),
@@ -73,7 +73,7 @@ public class MainGuiDemo {
             if (resposta.getType() == MessagesEnum.LOGIN && "OK".equals(resposta.getContent())) {
                 return true;
             } else {
-                JOptionPane.showMessageDialog(null, "❌ Erro no Login: " + resposta.getContent());
+                JOptionPane.showMessageDialog(null, " Erro no Login: " + resposta.getContent());
                 socket.close();
                 return false;
             }
@@ -95,10 +95,10 @@ public class MainGuiDemo {
             for (JButton b : botoes) b.setEnabled(false);
             out.writeObject(new Mensagem(MessagesEnum.ANSWER, index));
             out.flush();
-            gui.log("📤 Resposta enviada. A aguardar...");
+            gui.log(" Resposta enviada. A aguardar...");
             pararTimer();
         } catch (IOException ex) {
-            gui.log("❌ Erro ao enviar.");
+            gui.log(" Erro ao enviar.");
         }
     }
 
@@ -109,14 +109,15 @@ public class MainGuiDemo {
                 SwingUtilities.invokeLater(() -> processarMensagem(msg));
             }
         } catch (Exception e) {
-            SwingUtilities.invokeLater(() -> gui.log("❌ Desconectado."));
+            SwingUtilities.invokeLater(() -> gui.log(" Desconectado."));
         }
     }
 
     private static void processarMensagem(Mensagem msg) {
         switch (msg.getType()) {
             case QUESTION -> {
-                // ✅ VOLTÁMOS A LER O ARRAY [Question, Boolean]
+
+                //  VOLTÁMOS A LER O ARRAY [Question, Boolean]
                 Object[] dados = (Object[]) msg.getContent();
                 Question q = (Question) dados[0];
                 boolean isTeamMode = (boolean) dados[1];
@@ -144,7 +145,7 @@ public class MainGuiDemo {
         }
     }
 
-    // ✅ RECUPERADO: Método recebe o modo de jogo para atualizar o topo da GUI
+    //  Método recebe o modo de jogo para atualizar o topo da GUI
     private static void mostrarNovaPergunta(Question q, boolean isTeamMode) {
         for (JButton b : botoes) {
             b.setBackground(null);
@@ -152,7 +153,7 @@ public class MainGuiDemo {
             b.setOpaque(true);
         }
 
-        // 🔥 ATUALIZA O MODO NO TOPO DA GUI
+        //  ATUALIZA O MODO NO TOPO DA GUI
         if (isTeamMode) {
             try { gui.atualizarModo("MODO EQUIPA", Color.BLUE); } catch (Exception e) {}
         } else {
@@ -174,13 +175,13 @@ public class MainGuiDemo {
             btn.setBorderPainted(false);
             if (acertou) {
                 btn.setBackground(Color.GREEN);
-                gui.log("✅ Acertaste!");
+                gui.log(" Acertaste!");
             } else {
                 btn.setBackground(Color.RED);
-                gui.log("❌ Erraste!");
+                gui.log(" Erraste!");
             }
         } else {
-            gui.log("⚠️ Tempo esgotado.");
+            gui.log("️ Tempo esgotado.");
         }
     }
 
@@ -209,7 +210,7 @@ public class MainGuiDemo {
     }
 
     private static void tempoEsgotado() {
-        gui.log("⏳ Tempo acabou!");
+        gui.log(" Tempo acabou!");
         for (JButton b : botoes) b.setEnabled(false);
         try {
             out.writeObject(new Mensagem(MessagesEnum.ANSWER, -1));

@@ -30,7 +30,7 @@ public class GameTimer extends Thread {
 
             segundosRestantes--;
 
-            // 🔥 IMPORTANTE: Como estamos numa Thread separada,
+            //  IMPORTANTE: Como estamos numa Thread separada,
             // não podemos mexer na GUI diretamente. Usamos invokeLater.
             SwingUtilities.invokeLater(onTick);
         }
